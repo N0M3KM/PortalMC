@@ -5,24 +5,39 @@ is conceptual inspiration, not a dependency or a shared-memory engine bridge.
 
 ## Environment separation
 
-`src/main` contains registration and, in later phases, configuration, input
-payload definitions, deterministic movement math and authoritative portal state.
-`src/client` contains client initialization and future prediction, input,
+`src/main` contains registration, configuration, input payload definitions,
+deterministic movement math and authoritative movement. Portal state is future work.
+`src/client` contains client initialization, prediction, input and future
 character, camera and portal rendering. Item visual assets also live in
 `src/client/resources`, and Loom packages both source sets in the mod JAR.
 Common code must not import client
 classes. Dedicated startup is a required check for each phase.
 
-## Phase 1 design
+## Phase 1 implementation
 
-Use one solver on client and server. Send sequenced inputs; return authoritative
-states with acknowledgements; reconcile and replay pending inputs. Adapt vanilla
-movement handling only for players using Portal movement, avoiding duplicate
-simulation and invalid vanilla speed checks. Do not globally disable validation.
-Network loss or changed collision may still require visible correction.
+`SourceMovement` is the shared pure solver. Clients send sequenced axes, view
+angles and jump/crouch buttons; they never submit authoritative position or
+velocity. The server consumes a bounded queue with a server-time budget, then
+sends position/velocity/ground/pose and the acknowledged sequence. The client
+compares its prediction and replays unacknowledged commands if needed. Epochs
+discard stale inputs across teleports, respawns, dimension and mode changes.
+
+26.3 restores a server player's position during the connection tick, so the
+custom server solver runs after that restoration. Player travel and native jump
+are suppressed only while custom movement is active; active movement ignores
+vanilla position packets on the logical server thread. Native teleport
+acknowledgement remains intact. An input timeout resets the stream and applies
+neutral gravity every tick. The queue cannot purchase extra simulation time by
+sending more packets. Small vanilla velocity cutoffs are suppressed to preserve
+the shared equations. Native block collision queries are reused for each substep;
+the server applies fall damage, movement statistics and swept block effects.
+
+Reconciliation is necessary when server collision or external forces differ.
+Loss, long stalls or newly changed terrain can still cause visible correction;
+latency testing is required before claiming smooth dedicated multiplayer.
 
 Ground friction/acceleration, air strafing, jumping, crouching, sliding and steps
-belong to the solver. Initially swimming, riding, elytra and flight remain vanilla.
+belong to the solver. Swimming, riding, climbing, elytra and flight remain vanilla.
 Use 40 Source units per block from the requested 72-unit/1.8-block height ratio.
 Document every constant with its authoritative source, original units and
 conversion; do not assume remembered Source defaults equal Portal 2 defaults.

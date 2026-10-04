@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "id": "portalmod-gametest",
+  "version": "1.0.0",
+  "name": "PortalMC Movement Integration Tests",
+  "environment": "client",
+  "entrypoints": {
+    "fabric-client-gametest": ["dev.portalmod.gametest.MovementGameTest"]
+  },
+  "depends": {"portalmod": "*"}
+}

@@ -23,9 +23,9 @@ development-account authentication/Realms warnings; no real credentials are
 provided by `runClient`. The server also reported host Windows performance-counter
 warnings, then successfully reached mod initialization and the EULA gate.
 
-The Phase 0 gate remains open because full dedicated and world/item checks are
-pending. Phase 1 has not been started. The user authorized pushing this scaffold
-with the dedicated-server test pending.
+The user subsequently confirmed Phase 0 is functionally working and explicitly
+authorized Phase 1. The dedicated startup test remains deferred by the user's
+instruction to leave the EULA unaccepted; it is not recorded as a pass.
 
 ## Manual checklist
 
@@ -49,4 +49,4 @@ with the dedicated-server test pending.
 Phase 0 adds only a diagnostic item. Portal movement, long-fall boots, a portal
 gun, character replacement, rendering and traversal are not implemented.
 Sodium and Iris compatibility is not yet tested. All manual checks not directly
-observed remain pending; Phase 1 must not be started before the Phase 0 gate.
+observed remain pending unless covered by the user's functional confirmation.

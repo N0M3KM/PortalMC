@@ -26,3 +26,36 @@ try {
 } finally {
     $bitmap.Dispose()
 }
+
+# Original, deliberately simple silhouettes for Phase 1 equipment.
+$palette = @{
+    'W' = [System.Drawing.Color]::FromArgb(255, 222, 232, 238)
+    'D' = [System.Drawing.Color]::FromArgb(255, 38, 48, 60)
+    'B' = [System.Drawing.Color]::FromArgb(255, 48, 159, 255)
+    'O' = [System.Drawing.Color]::FromArgb(255, 255, 145, 45)
+}
+$sprites = @{
+    'portal_gun' = @(
+        '................', '................', '................', '..........DDD...',
+        '...DDWWWWWDBD...', '..DWWWWWWWWBD...', '..DWWWWWWWWDD...', '...DDWWWWWDOD...',
+        '.....DDDDDODD...', '.....DDD........', '....DDD.........', '....DD..........',
+        '................', '................', '................', '................')
+    'long_fall_boots' = @(
+        '................', '................', '...WW....WW.....', '...WW....WW.....',
+        '...DW....DW.....', '...DW....DW.....', '...DW....DW.....', '...DW....DW.....',
+        '...DW....DW.....', '...DW....DW.....', '..DDWW..DDWW....', '..DWWW..DWWW....',
+        '..DDDD..DDDD....', '................', '................', '................')
+}
+foreach ($spriteName in $sprites.Keys) {
+    $sprite = [System.Drawing.Bitmap]::new(16, 16)
+    try {
+        for ($y = 0; $y -lt 16; $y++) {
+            for ($x = 0; $x -lt 16; $x++) {
+                $symbol = [string]$sprites[$spriteName][$y][$x]
+                if ($palette.ContainsKey($symbol)) { $sprite.SetPixel($x, $y, $palette[$symbol]) }
+            }
+        }
+        $spritePath = Join-Path (Split-Path $texturePath) "$spriteName.png"
+        $sprite.Save([System.IO.Path]::GetFullPath($spritePath), [System.Drawing.Imaging.ImageFormat]::Png)
+    } finally { $sprite.Dispose() }
+}

@@ -8,8 +8,9 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.entity.EquipmentSlot;
 
-/** Phase 0 only: a harmless item to verify registration on both environments. */
+/** Diagnostic token and original placeholders for Phase 1 fall-protection tests. */
 public final class PortalItems {
     public static final ResourceKey<Item> HELLO_WORLD_KEY = ResourceKey.create(
             Registries.ITEM, Identifier.fromNamespaceAndPath(PortalMod.MOD_ID, "hello_world"));
@@ -17,12 +18,19 @@ public final class PortalItems {
             BuiltInRegistries.ITEM,
             HELLO_WORLD_KEY,
             new Item(new Item.Properties().setId(HELLO_WORLD_KEY)));
+    public static final Item PORTAL_GUN = register("portal_gun", new Item.Properties().stacksTo(1));
+    public static final Item LONG_FALL_BOOTS = register("long_fall_boots", new Item.Properties().stacksTo(1).equippable(EquipmentSlot.FEET));
+
+    private static Item register(String path, Item.Properties properties) {
+        ResourceKey<Item> key = ResourceKey.create(Registries.ITEM, Identifier.fromNamespaceAndPath(PortalMod.MOD_ID, path));
+        return Registry.register(BuiltInRegistries.ITEM, key, new Item(properties.setId(key)));
+    }
 
     private PortalItems() {
     }
 
     public static void initialize() {
         CreativeModeTabEvents.modifyOutputEvent(CreativeModeTabs.TOOLS_AND_UTILITIES)
-                .register(output -> output.accept(HELLO_WORLD));
+                .register(output -> { output.accept(HELLO_WORLD); output.accept(PORTAL_GUN); output.accept(LONG_FALL_BOOTS); });
     }
 }

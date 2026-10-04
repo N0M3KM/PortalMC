@@ -3,7 +3,7 @@
   "id": "portalmod",
   "version": "${version}",
   "name": "PortalMC",
-  "description": "Original Portal-inspired movement, character and portals inside Minecraft. Phase 0 scaffold.",
+  "description": "Portal-inspired movement inside Minecraft, with server authority and client prediction. Phase 1.",
   "authors": ["N0M3KM"],
   "license": "MIT",
   "contact": {
@@ -11,6 +11,7 @@
     "issues": "https://github.com/N0M3KM/PortalMC/issues"
   },
   "environment": "*",
+  "mixins": ["portalmod.mixins.json"],
   "entrypoints": {
     "main": ["dev.portalmod.PortalMod"],
     "client": ["dev.portalmod.client.PortalModClient"]
