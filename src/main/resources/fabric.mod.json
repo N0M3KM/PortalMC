@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "id": "portalmod",
+  "version": "${version}",
+  "name": "PortalMC",
+  "description": "Original Portal-inspired movement, character and portals inside Minecraft. Phase 0 scaffold.",
+  "authors": ["N0M3KM"],
+  "license": "MIT",
+  "contact": {
+    "sources": "https://github.com/N0M3KM/PortalMC",
+    "issues": "https://github.com/N0M3KM/PortalMC/issues"
+  },
+  "environment": "*",
+  "entrypoints": {
+    "main": ["dev.portalmod.PortalMod"],
+    "client": ["dev.portalmod.client.PortalModClient"]
+  },
+  "depends": {
+    "fabricloader": ">=0.19.5",
+    "minecraft": "~26.3",
+    "java": ">=25",
+    "fabric-api": ">=0.161.0+26.3"
+  }
+}
