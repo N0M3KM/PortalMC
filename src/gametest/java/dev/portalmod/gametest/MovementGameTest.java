@@ -3,6 +3,8 @@ package dev.portalmod.gametest;
 import dev.portalmod.config.ConfigManager;
 import dev.portalmod.movement.MovementHooks;
 import dev.portalmod.server.ServerMovement;
+import dev.portalmod.client.assets.LocalPortalAssets;
+import net.minecraft.client.CameraType;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -95,6 +97,14 @@ public final class MovementGameTest implements FabricClientGameTest {
             server.runCommand("portalmod movement portal");
             context.waitFor(client -> MovementHooks.active(client.player), 100);
             context.takeScreenshot("phase-1-movement");
+            boolean localInstall = java.nio.file.Files.isRegularFile(java.nio.file.Path.of(LocalPortalAssets.config.portal2Directory).resolve("portal2/pak01_dir.vpk"));
+            if (localInstall && LocalPortalAssets.config.enabled) require(LocalPortalAssets.gunReady() && LocalPortalAssets.chellReady(), "Local Portal 2 models did not load");
+            context.waitTicks(10);
+            context.takeScreenshot("phase-2-portal-gun");
+            context.runOnClient(client -> client.options.setCameraType(CameraType.THIRD_PERSON_FRONT));
+            context.waitTicks(10);
+            context.takeScreenshot("phase-2-chell");
+            context.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
         }
     }
 

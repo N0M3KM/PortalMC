@@ -11,7 +11,7 @@
     "issues": "https://github.com/N0M3KM/PortalMC/issues"
   },
   "environment": "*",
-  "mixins": ["portalmod.mixins.json"],
+  "mixins": ["portalmod.mixins.json", {"config": "portalmod.client.mixins.json", "environment": "client"}],
   "entrypoints": {
     "main": ["dev.portalmod.PortalMod"],
     "client": ["dev.portalmod.client.PortalModClient"]

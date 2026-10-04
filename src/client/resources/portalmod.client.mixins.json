@@ -1,0 +1,7 @@
+{
+  "required": true,
+  "package": "dev.portalmod.client.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "client": ["PortalHandMixin", "ChellRendererMixin"],
+  "injectors": {"defaultRequire": 1}
+}

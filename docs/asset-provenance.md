@@ -13,6 +13,9 @@
 Regenerate the textures with `tools/generate-placeholder-texture.ps1` on Windows.
 No Valve files are inputs to that script or the build.
 
-The user's Portal 2 install at `D:\SteamLibrary\steamapps\common\Portal 2` is not
-read by the mod. Any optional future runtime asset loader requires a separate
-feature and must never package assets from that installation.
+At the user's explicit Phase 2 request, a client-only runtime reader loads the
+gun and Chell mesh/base-color textures from their Portal 2 install at
+`D:\SteamLibrary\steamapps\common\Portal 2`. These remain in memory, are not
+extracted, are not transmitted, and are never packaged or committed. The JAR
+contains only the independently written reader and original placeholders.
+See `testing/phase-2.md` for settings, formats, validation and limitations.
