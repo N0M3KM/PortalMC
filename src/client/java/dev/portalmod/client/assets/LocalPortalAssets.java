@@ -5,6 +5,8 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
 import dev.portalmod.PortalMod;
 import dev.portalmod.assets.SourceModel;
+import dev.portalmod.assets.SourceMaterial;
+import dev.portalmod.assets.LegMotion;
 import dev.portalmod.assets.ArmaturePose;
 import dev.portalmod.client.visual.OriginalGeometry;
 import dev.portalmod.client.visual.CharacterAnimation;
@@ -18,7 +20,6 @@ import java.nio.file.Path;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.regex.Pattern;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.entity.state.AvatarRenderState;
@@ -37,6 +38,7 @@ public final class LocalPortalAssets {
     private static SourceModel gun, chell;
     private static Vector3f gunGrip = new Vector3f(), gunEmitter = new Vector3f();
     private static final Map<String, Identifier> textures = new HashMap<>();
+    private static final Map<String, SourceMaterial> materials = new HashMap<>();
     private record CacheKey(SourceModel model,int entity) { }
     private static final class CachedMesh {
         long poseFrame=-1,vertexFrame=-1; Matrix4f[] pose; float[] vertices;
@@ -68,6 +70,12 @@ public final class LocalPortalAssets {
             for (SourceModel model : new SourceModel[]{loadedGun, loadedChell}) for (SourceModel.Mesh mesh : model.meshes()) {
                 if (!textures.containsKey(mesh.material())) loadTexture(client, archive, mesh.material());
             }
+            // Optional authored colour skins; failure here does not disable either model.
+            for (String variant : new String[]{"models/weapons/v_models/v_portalgun/v_portalgun_blue", "models/weapons/v_models/v_portalgun/v_portalgun_orange"})
+                if (archive.contains("materials/"+variant+".vmt")) {
+                    try { loadTexture(client,archive,variant); }
+                    catch (Exception e) { PortalMod.LOGGER.warn("Optional local gun colour unavailable: {}",variant); }
+                }
             gun = loadedGun; chell = loadedChell;
             int hand = ArmaturePose.bone(gun, "ValveBiped.Bip01_R_Hand");
             if (hand >= 0) gunGrip = ArmaturePose.bind(gun)[hand].getTranslation(new Vector3f());
@@ -78,12 +86,12 @@ public final class LocalPortalAssets {
     }
     private static void loadTexture(Minecraft client, VpkArchive archive, String material) throws Exception {
         String vmt = new String(archive.read("materials/" + material + ".vmt"), StandardCharsets.UTF_8);
-        var match = Pattern.compile("(?i)\\$basetexture\\\"?\\s+\\\"?([^\\\"\\s]+)").matcher(vmt);
-        VtfImage decoded;
-        if (match.find()) decoded = VtfImage.decode(archive.read("materials/" + VpkArchive.normalize(match.group(1)) + ".vtf"), config.maxTextureDimension);
-        else decoded = new VtfImage(1, 1, new int[]{0xffdddddd});
+        SourceMaterial materialInfo = SourceMaterial.parse(vmt);
+        materials.put(material,materialInfo);
+        VtfImage decoded = materialInfo.texture() == null ? new VtfImage(1,1,new int[]{0xffdddddd})
+            : VtfImage.decode(archive.read("materials/"+VpkArchive.normalize(materialInfo.texture())+".vtf"),config.maxTextureDimension);
         NativeImage image = new NativeImage(decoded.width(), decoded.height(), false);
-        for (int y = 0; y < decoded.height(); y++) for (int x = 0; x < decoded.width(); x++) image.setPixel(x, y, decoded.argb()[y * decoded.width() + x]);
+        for (int y = 0; y < decoded.height(); y++) for (int x = 0; x < decoded.width(); x++) image.setPixel(x, y, materialInfo.pixel(decoded.argb()[y * decoded.width() + x]));
         Identifier id = Identifier.fromNamespaceAndPath("portalmod", "local/" + material.replaceAll("[^a-z0-9/._-]", "_"));
         client.getTextureManager().register(id, new DynamicTexture(() -> "Portal 2 local " + material, image));
         textures.put(material, id);
@@ -97,12 +105,6 @@ public final class LocalPortalAssets {
         pose.rotateDegrees(Axis.XP,-animation.kick()*c.fireKickDegrees);
         pose.rotateDegrees(Axis.ZP,animation.fizzle()*c.fizzleShakeDegrees);
         submitHeldGun(pose, collector, light);
-        if (c.firstPersonHands) {
-            Vector3f grip = new Vector3f(), wrist = new Vector3f(0,-c.handRadius,c.handRadius);
-            Vector3f elbow = new Vector3f(c.viewArmX-config.gunX,c.viewArmY-config.gunY,c.viewArmZ-config.gunZ);
-            OriginalGeometry.tube(pose,collector,elbow,wrist,c.forearmRadius,0xffefc5a4,light);
-            OriginalGeometry.hand(pose,collector,wrist,grip,light);
-        }
         pose.popPose();
     }
     public static void submitHeldGun(PoseStack pose, SubmitNodeCollector collector, int light) {
@@ -116,10 +118,6 @@ public final class LocalPortalAssets {
         pose.translate(-gunGrip.x,-gunGrip.y,gunGrip.z);
         Matrix4f[] mechanism=poseCached(gun,entityId,() -> gunMechanism(animation));
         submit(gun,pose,collector,light,ArmaturePose.skin(gun,mechanism),entityId);
-        if(PortalVisualConfig.current.gunGlow) {
-            var c=PortalVisualConfig.current; Vector3f emitter=new Vector3f(gunEmitter.x,gunEmitter.y,-gunEmitter.z);
-            OriginalGeometry.tube(pose,collector,emitter,new Vector3f(emitter).add(0,0,-c.emitterTipOffset/config.gunScale),c.emitterRadius/config.gunScale,animation.color(),net.minecraft.util.LightCoordsUtil.FULL_BRIGHT);
-        }
         pose.popPose();
     }
     public static void submitChell(AvatarRenderState state, PoseStack pose, SubmitNodeCollector collector) {
@@ -155,12 +153,18 @@ public final class LocalPortalAssets {
         float swing=(float)Math.sin(a.stride())*a.speed()*(float)Math.toRadians(c.strideDegrees);
         if(!c.characterAnimation) swing=(float)Math.sin(state.walkAnimationPos)*Math.min(1,state.walkAnimationSpeed)*(float)Math.toRadians(config.walkSwingDegrees);
         if(!c.strideAnimation && c.characterAnimation) swing=0;
-        float bend=a.crouch()*c.crouchBendDegrees+a.air()*c.airborneBendDegrees+a.jump()*c.jumpBendDegrees+a.land()*c.landingBendDegrees;
         ArmaturePose.rotate(model,global,"spine1",new Quaternionf().rotationXYZ((float)Math.toRadians(a.tilt()+a.crouch()*c.crouchBendDegrees),0,(float)Math.toRadians(a.lean()+a.idle())));
-        ArmaturePose.rotate(model,global,"thigh_L",new Quaternionf().rotationX(swing+(float)Math.toRadians(bend)));
-        ArmaturePose.rotate(model,global,"thigh_R",new Quaternionf().rotationX(-swing+(float)Math.toRadians(bend)));
-        ArmaturePose.rotate(model,global,"knee_L",new Quaternionf().rotationX((float)Math.toRadians(-bend-Math.max(0,Math.sin(a.stride()))*a.speed()*c.kneeDegrees)));
-        ArmaturePose.rotate(model,global,"knee_R",new Quaternionf().rotationX((float)Math.toRadians(-bend-Math.max(0,-Math.sin(a.stride()))*a.speed()*c.kneeDegrees)));
+        Matrix4f[] rest=ArmaturePose.bind(model);
+        float drop=(c.characterAnimation?a.crouch():(state.isCrouching?1:0))*c.crouchDropUnits+a.land()*c.landingMaxDropUnits;
+        for(String side:new String[]{"R","L"}) {
+            int ankle=ArmaturePose.bone(model,"ankle_"+side); if(ankle<0) continue;
+            float sign=side.equals("R")?-1:1;
+            var step=LegMotion.step(a.stride()+(side.equals("L")?(float)Math.PI:0),c.strideAnimation?a.speed():0,a.crouch(),c.footStrideUnits,c.footLiftUnits,c.crouchStanceUnits);
+            Vector3f target=rest[ankle].getTranslation(new Vector3f()).add(sign*step.stance(),drop+step.lift(),step.forward());
+            if(a.air()>0) target.add(0,a.air()*c.airFootLiftUnits,a.jump()*c.jumpFootForwardUnits);
+            ArmaturePose.limb(model,global,"thigh_"+side,"knee_"+side,"ankle_"+side,target,new Vector3f(sign*.1f,0,1));
+            ArmaturePose.upright(model,global,rest,"ankle_"+side);
+        }
         float pitch=c.characterAnimation?a.pitch():Math.clamp(state.xRot,-c.headPitchLimit,c.headPitchLimit);
         float yaw=c.characterAnimation?a.yaw():Math.clamp(state.yRot,-c.headYawLimit,c.headYawLimit);
         ArmaturePose.rotate(model,global,"head",new Quaternionf().rotationYXZ((float)Math.toRadians(c.headFollow?-yaw:0),(float)Math.toRadians(c.headFollow?Math.clamp(pitch,-c.headPitchLimit,c.headPitchLimit):0),0));
@@ -217,13 +221,27 @@ public final class LocalPortalAssets {
         cached.vertexFrame=caching?frame:-1;
         }
         for (SourceModel.Mesh mesh : model.meshes()) {
-            if (mesh.material().contains("glass")) continue;
-            Identifier texture = textures.get(mesh.material());
-            collector.submitCustomGeometry(pose, RenderTypes.entityCutout(texture), (savedPose, buffer) -> {
+            String materialName=mesh.material();
+            var materialInfo=materials.get(materialName);
+            boolean glass=materialName.contains("portalgun_glass");
+            int tint=-1;
+            if(model==gun && PortalVisualConfig.current.gunGlow) {
+                var animation=GunAnimation.forEntity(entityId);
+                if(glass) tint=animation.color() & 0xffffff | (int)(PortalVisualConfig.current.gunGlassOpacity*255)<<24;
+                else {
+                    String variant="models/weapons/v_models/v_portalgun/v_portalgun_"+(((animation.color()>>16)&255)>((animation.color())&255)?"orange":"blue");
+                    if(textures.containsKey(variant)) materialName=variant;
+                }
+            }
+            Identifier texture=textures.get(materialName);
+            var renderType=glass && PortalVisualConfig.current.gunGlow?RenderTypes.entityTranslucentEmissive(texture)
+                : materialInfo!=null && materialInfo.translucent()?RenderTypes.entityTranslucent(texture):RenderTypes.entityCutout(texture);
+            final int color=tint;
+            collector.submitCustomGeometry(pose, renderType, (savedPose, buffer) -> {
                 int[] indices = mesh.triangles();
                 for (int t = 0; t < indices.length; t += 3) for (int corner : TRIANGLE_QUAD) {
                     int p = indices[t + corner] * 8;
-                    buffer.addVertex(savedPose, vertices[p], vertices[p + 1], vertices[p + 2]).setColor(-1)
+                    buffer.addVertex(savedPose, vertices[p], vertices[p + 1], vertices[p + 2]).setColor(color)
                             .setUv(vertices[p + 6], vertices[p + 7]).setOverlay(OverlayTexture.NO_OVERLAY).setLight(light)
                             .setNormal(savedPose, vertices[p + 3], vertices[p + 4], vertices[p + 5]);
                 }

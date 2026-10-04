@@ -6,8 +6,13 @@ import net.fabricmc.loader.api.FabricLoader;
 
 /** New visual constants are estimates, independently authored and expressed in blocks/degrees/seconds. */
 public final class PortalVisualConfig {
-    public boolean armPose = true, firstPersonHands = true, thirdPersonGun = true;
-    public float gripX = -9, gripY = 55, gripZ = 17, supportGripX = -2, supportGripY = 55, supportGripZ = 20;
+    public boolean armPose = true, thirdPersonGun = true;
+    public int visualRevision = 2;
+    public boolean portalCrosshair = true;
+    public int crosshairSize = 23, crosshairBlue = 0xff28aaff, crosshairOrange = 0xffff8a19;
+    public float gunGlassOpacity = .65f;
+    public float footStrideUnits = 7, footLiftUnits = 4, crouchStanceUnits = 2, airFootLiftUnits = 7, jumpFootForwardUnits = 5;
+    public float gripX = -9, gripY = 55, gripZ = 17, supportGripX = 3, supportGripY = 55, supportGripZ = 15;
     public float armPoleOut = 1, armPoleDown = -1, armPoleForward = 0;
     public float aimPitchLimit = 65, headPitchLimit = 60, headYawLimit = 65;
     public float handRadius = 0.045f, forearmRadius = 0.052f;
@@ -39,7 +44,14 @@ public final class PortalVisualConfig {
         try {
             PortalVisualConfig c = Files.exists(path) ? ConfigManager.JSON.fromJson(Files.readString(path), PortalVisualConfig.class) : new PortalVisualConfig();
             if (c == null) throw new IllegalArgumentException("Missing visual settings");
+            if (Files.exists(path)) {
+                var json=com.google.gson.JsonParser.parseString(Files.readString(path)).getAsJsonObject();
+                if(!json.has("visualRevision")) { if(c.supportGripX==-2) c.supportGripX=3; if(c.supportGripZ==20) c.supportGripZ=15; c.visualRevision=2; }
+            }
             for (var field : PortalVisualConfig.class.getFields()) if (field.getType() == float.class && !Float.isFinite(field.getFloat(c))) throw new IllegalArgumentException("Non-finite " + field.getName());
+            c.gunGlassOpacity=Math.clamp(c.gunGlassOpacity,0,1); c.crosshairSize=Math.clamp(c.crosshairSize,15,49);
+            c.footStrideUnits=Math.clamp(c.footStrideUnits,0,12); c.footLiftUnits=Math.clamp(c.footLiftUnits,0,10);
+            c.crouchStanceUnits=Math.clamp(c.crouchStanceUnits,0,5); c.airFootLiftUnits=Math.clamp(c.airFootLiftUnits,0,15); c.jumpFootForwardUnits=Math.clamp(c.jumpFootForwardUnits,0,10);
             c.aimPitchLimit = Math.clamp(c.aimPitchLimit, 0, 75); c.headPitchLimit = Math.clamp(c.headPitchLimit, 0, 75); c.headYawLimit = Math.clamp(c.headYawLimit, 0, 85);
             c.handRadius = Math.clamp(c.handRadius, .01f, .08f); c.forearmRadius = Math.clamp(c.forearmRadius, .01f, .1f);
             c.originalGunLength = Math.clamp(c.originalGunLength, .2f, 1); c.originalGunRadius = Math.clamp(c.originalGunRadius, .04f, .2f);

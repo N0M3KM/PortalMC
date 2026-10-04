@@ -3,6 +3,7 @@ package dev.portalmod.client.visual;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
 import dev.portalmod.assets.ArmaturePose;
+import dev.portalmod.assets.LegMotion;
 import dev.portalmod.client.assets.LocalPortalAssets;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.entity.state.AvatarRenderState;
@@ -26,10 +27,11 @@ public final class OriginalCharacter {
         OriginalGeometry.tube(pose,nodes,new Vector3f(0,2,3),new Vector3f(0,-5,4),2,0xff4c3024,light); pose.popPose();
         for(String side:new String[]{"R","L"}) {
             float sign=side.equals("R")?-1:1;
-            float stride=c.strideAnimation?(float)Math.sin(a.stride())*a.speed()*c.strideDegrees*sign:0;
-            float bend=a.crouch()*c.crouchBendDegrees+a.air()*c.airborneBendDegrees+a.jump()*c.jumpBendDegrees+a.land()*c.landingBendDegrees;
-            Vector3f leg=new Vector3f(sign*5,36,0),knee=new Vector3f(0,-17,0).rotateX(rad(stride+bend)).add(leg);
-            Vector3f ankle=new Vector3f(0,-17,0).rotateX(rad(stride-bend)).add(knee);
+            var step=LegMotion.step(a.stride()+(side.equals("L")?(float)Math.PI:0),c.strideAnimation?a.speed():0,a.crouch(),c.footStrideUnits,c.footLiftUnits,c.crouchStanceUnits);
+            float drop=a.crouch()*c.crouchDropUnits+a.land()*c.landingMaxDropUnits;
+            Vector3f leg=new Vector3f(sign*5,36,0),footTarget=new Vector3f(sign*(5+step.stance()),2+drop+step.lift()+a.air()*c.airFootLiftUnits,-step.forward()-a.jump()*c.jumpFootForwardUnits);
+            var legJoints=ArmaturePose.solve(leg,17,17,footTarget,new Vector3f(sign*.1f,0,-1));
+            Vector3f knee=legJoints[0],ankle=legJoints[1];
             OriginalGeometry.tube(pose,nodes,leg,knee,4.3f,0xffe77227,light);
             OriginalGeometry.tube(pose,nodes,knee,ankle,3.1f,0xffed812b,light);
             OriginalGeometry.tube(pose,nodes,new Vector3f(knee).add(sign*3,0,2),new Vector3f(ankle).add(sign*3,0,3),1.5f,0xffeff4f4,light);

@@ -46,15 +46,23 @@ public final class ArmaturePose {
     }
     /** Two-bone IK keeps segment lengths; an out-of-reach grip is clamped instead of stretching. */
     public static void arm(SourceModel model, Matrix4f[] pose, String side, Vector3f target, Vector3f pole) {
-        int upper = bone(model, "bicep_" + side), elbow = bone(model, "elbow_" + side), wrist = bone(model, "wrist_" + side);
+        limb(model,pose,"bicep_"+side,"elbow_"+side,"wrist_"+side,target,pole);
+    }
+    public static void limb(SourceModel model, Matrix4f[] pose, String upperName, String middleName, String endName, Vector3f target, Vector3f pole) {
+        int upper = bone(model, upperName), elbow = bone(model, middleName), wrist = bone(model, endName);
         if (upper < 0 || elbow < 0 || wrist < 0) return;
         Vector3f shoulder = pose[upper].getTranslation(new Vector3f());
         Vector3f elbowPos = pose[elbow].getTranslation(new Vector3f());
         Vector3f hand = pose[wrist].getTranslation(new Vector3f());
         Vector3f[] solution = solve(shoulder, elbowPos.distance(shoulder), hand.distance(elbowPos), target, pole);
-        rotate(model, pose, "bicep_" + side, new Quaternionf().rotationTo(elbowPos.sub(shoulder).normalize(), new Vector3f(solution[0]).sub(shoulder).normalize()));
+        rotate(model, pose, upperName, new Quaternionf().rotationTo(elbowPos.sub(shoulder).normalize(), new Vector3f(solution[0]).sub(shoulder).normalize()));
         elbowPos = pose[elbow].getTranslation(new Vector3f()); hand = pose[wrist].getTranslation(new Vector3f());
-        rotate(model, pose, "elbow_" + side, new Quaternionf().rotationTo(hand.sub(elbowPos).normalize(), new Vector3f(solution[1]).sub(elbowPos).normalize()));
+        rotate(model, pose, middleName, new Quaternionf().rotationTo(hand.sub(elbowPos).normalize(), new Vector3f(solution[1]).sub(elbowPos).normalize()));
+    }
+    public static void upright(SourceModel model, Matrix4f[] pose, Matrix4f[] bind, String name) {
+        int i=bone(model,name); if(i<0) return;
+        Quaternionf delta=bind[i].getUnnormalizedRotation(new Quaternionf()).mul(pose[i].getUnnormalizedRotation(new Quaternionf()).conjugate());
+        rotate(model,pose,name,delta);
     }
     public static Vector3f[] solve(Vector3f shoulder, float upper, float lower, Vector3f target, Vector3f pole) {
         Vector3f direction = new Vector3f(target).sub(shoulder);

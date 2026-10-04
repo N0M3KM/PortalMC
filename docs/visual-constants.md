@@ -1,15 +1,25 @@
-# Visual defaults and provenance (0.5.0)
+# Visual defaults and provenance (0.5.1)
 
 Numeric defaults for the new visual layers and performance policy are listed below. Unless noted otherwise, values are **estimated/original design**, not verified Valve values. Every effect has a boolean toggle in its corresponding JSON. Model topology, authored palette and fixed aperture geometry are art/compatibility contracts; they are not movement cvars.
 
 | Config / constant | Default | Source |
 | --- | --- | --- |
+| `visuals.visualRevision` | `2` | Estimated/original design |
+| `visuals.crosshairSize` | `23` | Estimated/original design |
+| `visuals.crosshairBlue` | `0xff28aaff` | Estimated/original design |
+| `visuals.crosshairOrange` | `0xffff8a19` | Estimated/original design |
+| `visuals.gunGlassOpacity` | `.65` | Estimated/original design |
+| `visuals.footStrideUnits` | `7` | Estimated/original design |
+| `visuals.footLiftUnits` | `4` | Estimated/original design |
+| `visuals.crouchStanceUnits` | `2` | Estimated/original design |
+| `visuals.airFootLiftUnits` | `7` | Estimated/original design |
+| `visuals.jumpFootForwardUnits` | `5` | Estimated/original design |
 | `visuals.gripX` | `-9` | Estimated/original design |
 | `visuals.gripY` | `55` | Estimated/original design |
 | `visuals.gripZ` | `17` | Estimated/original design |
-| `visuals.supportGripX` | `-2` | Estimated/original design |
+| `visuals.supportGripX` | `3` | Estimated/original design |
 | `visuals.supportGripY` | `55` | Estimated/original design |
-| `visuals.supportGripZ` | `20` | Estimated/original design |
+| `visuals.supportGripZ` | `15` | Estimated/original design |
 | `visuals.armPoleOut` | `1` | Estimated/original design |
 | `visuals.armPoleDown` | `-1` | Estimated/original design |
 | `visuals.armPoleForward` | `0` | Estimated/original design |
