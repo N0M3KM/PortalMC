@@ -4,7 +4,7 @@ A Fabric mod that brings Portal-style mechanics into Minecraft Java
 Edition. Minecraft hosts the entire game. Portal 2 and the Source engine are not
 launched, embedded or required.
 
-## Current scope: movement, models, portals and fidelity layers (0.5.1)
+## Current scope: movement, models, portals and fidelity layers (0.5.2)
 
 - Minecraft Java **26.3**, Java **25**.
 - Fabric Loader **0.19.5**, Fabric API **0.161.0+26.3**.
@@ -24,6 +24,12 @@ launched, embedded or required.
   floor and ceiling portals support players, fitting mobs, items and projectiles.
 - Destination views, bounded recursion, transformed momentum, server chunk
   tickets, remote client chunks and native remote entity tracking.
+
+Version 0.5.2 fixes portal-gun cooldown after respawn and loads the authored Chell
+animation library (`player_animations.mdl` / `.ani`) from the local Portal 2 install.
+Idle, directional movement, crouch, jump, aim, fire and landing use the original
+clips when available. This replaces the procedural arm/leg poses for imported
+Chell. See [the authored-animation and respawn report](docs/testing/respawn-authored-0.5.2.md).
 
 Version 0.5.1 fixes opaque material alpha/eye iris loading, restores the gun glass
 and authored colour skins, removes first-person hands, adds a dual-colour gun
@@ -71,7 +77,7 @@ The launcher uses the local Gradle cache and the installed `D:\Java` JDK when
 available. It starts Minecraft with the current source changes every time.
 
 On Linux/macOS use `bash ./gradlew build` and `bash ./gradlew runClient`.
-The mod JAR is `build/libs/portalmc-0.5.1.jar`; the `-sources.jar` is for developers.
+The mod JAR is `build/libs/portalmc-0.5.2.jar`; the `-sources.jar` is for developers.
 Install the mod and the matching Fabric API on **both client and server**.
 Do not put the sources JAR in `mods`.
 

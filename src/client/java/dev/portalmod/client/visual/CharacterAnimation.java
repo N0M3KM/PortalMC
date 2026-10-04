@@ -21,6 +21,7 @@ public final class CharacterAnimation {
         UUID uuid; Vec3 position, velocity=Vec3.ZERO; boolean grounded;
         Pose old=Pose.ZERO, pose=Pose.ZERO;
         float phase, jump, land, recoil, fallSpeed;
+        double distance; long airborneAt=Long.MIN_VALUE,landedAt=Long.MIN_VALUE;
     }
     private static final Map<Integer,Track> tracks=new HashMap<>();
     private static final Map<UUID,Long> fireTicks=new HashMap<>();
@@ -49,12 +50,15 @@ public final class CharacterAnimation {
         if(!discontinuity && p.onGround() && !t.grounded) {
             if(p.isLocalPlayer()) CameraEffects.landed(t.fallSpeed);
             t.land=Math.clamp(t.fallSpeed/c.landingReferenceSpeed,0,1); t.fallSpeed=0;
+            t.landedAt=p.level().getGameTime();
         }
+        if(!p.onGround() && t.grounded) t.airborneAt=p.level().getGameTime();
         if(!discontinuity && !p.onGround() && t.grounded && velocity.y>0) t.jump=1;
         double yaw=Math.toRadians(p.yBodyRot),right=velocity.x*Math.cos(yaw)+velocity.z*Math.sin(yaw);
         Vec3 acceleration=velocity.subtract(t.velocity).scale(20);
         float forwardAcceleration=(float)(-acceleration.x*Math.sin(yaw)+acceleration.z*Math.cos(yaw));
         t.phase+=speed*.05f*c.strideRadiansPerBlock;
+        if(!discontinuity) t.distance+=speed*.05;
         float bodyYaw=p.getYRot()-p.yBodyRot; bodyYaw=(bodyYaw+540)%360-180;
         Pose target=new Pose(t.phase,Math.clamp(speed/c.runSpeed,0,1),c.strafeLean?(float)Math.clamp(-right/c.runSpeed,-1,1)*c.strafeLeanDegrees:0,
             c.accelerationTilt?Math.clamp(forwardAcceleration/c.accelerationScale,-1,1)*c.accelerationTiltDegrees:0,
@@ -73,5 +77,13 @@ public final class CharacterAnimation {
         Track t=tracks.get(id); return t==null || !PortalVisualConfig.current.characterAnimation?Pose.ZERO:t.old.blend(t.pose,Math.clamp(partial,0,1));
     }
     public static float partialTicks() { return Minecraft.getInstance().getDeltaTracker().getGameTimeDeltaPartialTick(false); }
+    public record Motion(Vec3 velocity,double distanceBlocks,double airSeconds,double landSeconds,double fireSeconds) { }
+    public static Motion motion(int id) {
+        Track t=tracks.get(id);var level=Minecraft.getInstance().level;
+        if(t==null || level==null) return new Motion(Vec3.ZERO,0,0,Double.POSITIVE_INFINITY,Double.POSITIVE_INFINITY);
+        double now=level.getGameTime()+partialTicks();
+        return new Motion(t.velocity,t.distance,elapsed(now,t.airborneAt),elapsed(now,t.landedAt),elapsed(now,fireTicks.getOrDefault(t.uuid,Long.MIN_VALUE)));
+    }
+    private static double elapsed(double now,long tick) { return tick==Long.MIN_VALUE?Double.POSITIVE_INFINITY:Math.max(0,(now-tick)/20); }
     private static float m(float a,float b,float t) { return a+(b-a)*t; }
 }

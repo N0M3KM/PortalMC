@@ -5,6 +5,7 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
 import dev.portalmod.PortalMod;
 import dev.portalmod.assets.SourceModel;
+import dev.portalmod.assets.SourceAnimations;
 import dev.portalmod.assets.SourceMaterial;
 import dev.portalmod.assets.LegMotion;
 import dev.portalmod.assets.ArmaturePose;
@@ -36,6 +37,7 @@ public final class LocalPortalAssets {
     private static final int[] TRIANGLE_QUAD = {0, 2, 1, 1};
     public static LocalAssetConfig config = new LocalAssetConfig();
     private static SourceModel gun, chell;
+    private static SourceAnimations chellAnimations;
     private static Vector3f gunGrip = new Vector3f(), gunEmitter = new Vector3f();
     private static final Map<String, Identifier> textures = new HashMap<>();
     private static final Map<String, SourceMaterial> materials = new HashMap<>();
@@ -77,6 +79,11 @@ public final class LocalPortalAssets {
                     catch (Exception e) { PortalMod.LOGGER.warn("Optional local gun colour unavailable: {}",variant); }
                 }
             gun = loadedGun; chell = loadedChell;
+            // Chell delegates its animation library through the MDL include table.
+            try {
+                chellAnimations=SourceAnimations.read(archive,"models/player_animations.mdl",PortalVisualConfig.current.maxDecodedAnimationMegabytes*1024*1024);
+                PortalMod.LOGGER.info("Local Chell authored animations loaded: {} sequences; no animation data exported",chellAnimations.sequenceCount());
+            } catch(Exception e) { PortalMod.LOGGER.warn("Local Chell animation playback unavailable: {}",e.toString()); }
             int hand = ArmaturePose.bone(gun, "ValveBiped.Bip01_R_Hand");
             if (hand >= 0) gunGrip = ArmaturePose.bind(gun)[hand].getTranslation(new Vector3f());
             int emitter=ArmaturePose.bone(gun,"ValveBiped.Front_Cover_Stop");
@@ -128,7 +135,7 @@ public final class LocalPortalAssets {
         pose.pushPose(); pose.rotateDegrees(Axis.YP,180-state.bodyRot);
         float scale=state.scale/config.unitsPerBlock; pose.scale(scale,scale,scale);
         var animation=CharacterAnimation.pose(state.id,CharacterAnimation.partialTicks());
-        pose.translate(0,-(c.characterAnimation?animation.crouch():(state.isCrouching?1:0))*c.crouchDropUnits-animation.land()*c.landingMaxDropUnits,0);
+        if(!authoredAnimationReady()) pose.translate(0,-(c.characterAnimation?animation.crouch():(state.isCrouching?1:0))*c.crouchDropUnits-animation.land()*c.landingMaxDropUnits,0);
         if(chell==null || !config.chellCharacter) {
             OriginalCharacter.submit(state,animation,pose,collector,holding); pose.popPose(); return;
         }
@@ -148,6 +155,7 @@ public final class LocalPortalAssets {
         pose.popPose();
     }
     private static Matrix4f[] posedBones(SourceModel model,AvatarRenderState state,boolean holding) {
+        if(authoredAnimationReady()) return dev.portalmod.client.visual.AuthoredCharacterAnimation.pose(chellAnimations,model,state.id,holding);
         var c=PortalVisualConfig.current; Matrix4f[] global=ArmaturePose.bind(model);
         var a=CharacterAnimation.pose(state.id,CharacterAnimation.partialTicks());
         float swing=(float)Math.sin(a.stride())*a.speed()*(float)Math.toRadians(c.strideDegrees);
@@ -180,6 +188,10 @@ public final class LocalPortalAssets {
             }
         }
         return global;
+    }
+    private static boolean authoredAnimationReady() {
+        var c=PortalVisualConfig.current;
+        return chell!=null && config.chellCharacter && chellAnimations!=null && c.characterAnimation && c.authoredCharacterAnimations;
     }
     private static Matrix4f[] gunMechanism(GunAnimation.Pose animation) {
         Matrix4f[] mechanism=ArmaturePose.bind(gun); var c=PortalVisualConfig.current;

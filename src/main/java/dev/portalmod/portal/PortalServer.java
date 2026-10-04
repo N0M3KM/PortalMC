@@ -69,6 +69,10 @@ public final class PortalServer {
             }
         });
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> sync(handler.player));
+        net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents.AFTER_RESPAWN.register((oldPlayer,newPlayer,alive) -> {
+            SHOTS.remove(newPlayer.getUUID()); BEFORE.remove(oldPlayer);
+            sync(newPlayer); sendChunks(newPlayer);
+        });
         ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
             if (PORTALS.removeIf(p -> p.owner().equals(handler.player.getUUID()))) changed(server);
             SHOTS.remove(handler.player.getUUID());

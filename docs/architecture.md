@@ -121,3 +121,12 @@ Portal scene refresh is incremental and globally budgeted, with frustum culling,
 pooled targets and cached model vertices/poses. See `testing/fidelity-0.5.md`
 for the seven packages, budgets, complete tuning provenance and manual checks.
 The 1x2 collision contract remains unchanged beneath the visual oval.
+# Authored animation extension (0.5.2)
+
+The client can now read the local Chell animation include library and its external
+ANI blocks. A bounded common parser decodes frames/sequence grids; client-only
+playback selects/blends those poses from tracked movement and authoritative fire
+events. Imported Chell bypasses procedural limb IK when this path is enabled.
+Root-motion metadata controls visual cadence; it never changes gameplay position.
+Respawn firing cooldown is scoped to player incarnation and world clock, with
+server-side snapshot/chunk resynchronization on the Fabric respawn event.

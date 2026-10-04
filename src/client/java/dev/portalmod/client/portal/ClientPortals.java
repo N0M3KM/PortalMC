@@ -18,7 +18,7 @@ import net.minecraft.world.InteractionResult;
 public final class ClientPortals {
     private static List<PortalFrame> portals = List.of();
     private static PortalConfig config = new PortalConfig();
-    private static int lastShot = Integer.MIN_VALUE / 2;
+    private static final dev.portalmod.portal.ShotCooldown cooldown = new dev.portalmod.portal.ShotCooldown();
     private ClientPortals() { }
     public static List<PortalFrame> frames() { return portals; }
     public static PortalConfig config() { return config; }
@@ -45,7 +45,7 @@ public final class ClientPortals {
             config = data.config(); portals = List.copyOf(data.portals());
             if (context.client().level != null) ((PortalChunkCacheBridge)context.client().level.getChunkSource()).portalmod$retain();
         });
-        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> { portals = List.of(); lastShot = Integer.MIN_VALUE / 2; PortalRenderer.close(); dev.portalmod.client.visual.GunAnimation.clear(); PortalEffects.clear(); dev.portalmod.client.visual.CameraEffects.clear(); LocalPortalAssets.clearPoseCache(); });
+        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> { portals = List.of(); cooldown.reset(); PortalRenderer.close(); dev.portalmod.client.visual.GunAnimation.clear(); PortalEffects.clear(); dev.portalmod.client.visual.CameraEffects.clear(); LocalPortalAssets.clearPoseCache(); });
         ClientPreAttackCallback.EVENT.register((client, player, clicks) -> {
             if (player.getMainHandItem().is(PortalItems.PORTAL_GUN) || player.getOffhandItem().is(PortalItems.PORTAL_GUN)) {
                 if (clicks > 0) fire(false);
@@ -60,8 +60,8 @@ public final class ClientPortals {
     }
     public static void fire(boolean orange) {
         var player = Minecraft.getInstance().player;
-        if (player == null || !ClientPlayNetworking.canSend(PortalPayloads.Shot.TYPE) || player.tickCount - lastShot < config.shotCooldownTicks) return;
-        lastShot = player.tickCount;
+        if (player == null || !ClientPlayNetworking.canSend(PortalPayloads.Shot.TYPE)
+            || !cooldown.acquire(player,player.level(),player.level().getGameTime(),config.shotCooldownTicks)) return;
         dev.portalmod.client.visual.GunAnimation.fired(orange);
         ClientPlayNetworking.send(new PortalPayloads.Shot(orange, player.getYRot(), player.getXRot()));
     }

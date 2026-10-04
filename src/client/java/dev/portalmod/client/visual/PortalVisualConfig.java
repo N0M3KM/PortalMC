@@ -19,6 +19,9 @@ public final class PortalVisualConfig {
     public float viewArmX = 0.52f, viewArmY = -0.65f, viewArmZ = 0.08f;
     public float originalGunLength = 0.65f, originalGunRadius = 0.12f;
     public boolean characterAnimation = true, originalCharacterFallback = true;
+    public boolean authoredCharacterAnimations = true;
+    public int maxDecodedAnimationMegabytes = 64;
+    public float authoredMovingBlendSpeed = .5f, authoredUnitsPerBlock = 40;
     public boolean idleWeightShift = true, strideAnimation = true, strafeLean = true, accelerationTilt = true;
     public boolean crouchPose = true, jumpPose = true, airbornePose = true, landingSquash = true, headFollow = true, characterRecoil = true;
     public float poseResponse = 12, aimResponse = 16, strideRadiansPerBlock = 3.5f, runSpeed = 8;
@@ -50,6 +53,8 @@ public final class PortalVisualConfig {
             }
             for (var field : PortalVisualConfig.class.getFields()) if (field.getType() == float.class && !Float.isFinite(field.getFloat(c))) throw new IllegalArgumentException("Non-finite " + field.getName());
             c.gunGlassOpacity=Math.clamp(c.gunGlassOpacity,0,1); c.crosshairSize=Math.clamp(c.crosshairSize,15,49);
+            c.maxDecodedAnimationMegabytes=Math.clamp(c.maxDecodedAnimationMegabytes,1,256);
+            c.authoredMovingBlendSpeed=Math.clamp(c.authoredMovingBlendSpeed,.1f,8); c.authoredUnitsPerBlock=Math.clamp(c.authoredUnitsPerBlock,1,100);
             c.footStrideUnits=Math.clamp(c.footStrideUnits,0,12); c.footLiftUnits=Math.clamp(c.footLiftUnits,0,10);
             c.crouchStanceUnits=Math.clamp(c.crouchStanceUnits,0,5); c.airFootLiftUnits=Math.clamp(c.airFootLiftUnits,0,15); c.jumpFootForwardUnits=Math.clamp(c.jumpFootForwardUnits,0,10);
             c.aimPitchLimit = Math.clamp(c.aimPitchLimit, 0, 75); c.headPitchLimit = Math.clamp(c.headPitchLimit, 0, 75); c.headYawLimit = Math.clamp(c.headYawLimit, 0, 85);

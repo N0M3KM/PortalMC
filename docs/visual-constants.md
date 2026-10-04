@@ -1,4 +1,4 @@
-# Visual defaults and provenance (0.5.1)
+# Visual defaults and provenance (0.5.2)
 
 Numeric defaults for the new visual layers and performance policy are listed below. Unless noted otherwise, values are **estimated/original design**, not verified Valve values. Every effect has a boolean toggle in its corresponding JSON. Model topology, authored palette and fixed aperture geometry are art/compatibility contracts; they are not movement cvars.
 
@@ -33,6 +33,9 @@ Numeric defaults for the new visual layers and performance policy are listed bel
 | `visuals.viewArmZ` | `0.08` | Estimated/original design |
 | `visuals.originalGunLength` | `0.65` | Estimated/original design |
 | `visuals.originalGunRadius` | `0.12` | Estimated/original design |
+| `visuals.maxDecodedAnimationMegabytes` | `64` | Estimated/original design |
+| `visuals.authoredMovingBlendSpeed` | `.5` | Estimated/original design |
+| `visuals.authoredUnitsPerBlock` | `40` | Estimated/original design |
 | `visuals.poseResponse` | `12` | Estimated/original design |
 | `visuals.aimResponse` | `16` | Estimated/original design |
 | `visuals.strideRadiansPerBlock` | `3.5` | Estimated/original design |
@@ -121,3 +124,5 @@ Existing Source movement cvar values/sources remain in [movement.md](movement.md
 Original fallback proportions use Source-scale mesh coordinates, with a 72-unit maximum standing height at 40 units/block. Joint locations, limb radii, finger placement, eight-sided surface topology and palette (`#efc5a4` skin, `#e77227`/`#ed812b` trousers, `#deddda` top, `#eff4f4` braces, `#202a31` boots, `#4c3024` hair) are estimated original art. They are not copied model vertices or claimed Valve constants. Rim/wisp color approximations are `#28aaff` blue and `#ff8a19` orange. The rim has three traveling brightness lobes; the original font is 5x7 artwork in fixed 8x10 slots.
 
 The 64x112 aspect maps to 1.6x2.8 blocks at the existing conversion. Fitting width to 1 block uniformly scales it by 0.625, yielding a 1x1.75 visual oval. Placement and collision retain the existing 1x2 rectangle, as required to preserve traversal.
+
+Local authored clip FPS, frame counts and root travel are read from Portal 2 at runtime, not estimated by these defaults. See [the animation repair report](testing/respawn-authored-0.5.2.md). `authoredMovingBlendSpeed` and the playback selection/blending policy remain estimates; the complete Source animation graph is not implemented.
