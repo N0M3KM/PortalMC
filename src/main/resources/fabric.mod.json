@@ -3,7 +3,7 @@
   "id": "portalmod",
   "version": "${version}",
   "name": "PortalMC",
-  "description": "Portal-inspired movement inside Minecraft, with server authority and client prediction. Phase 1.",
+  "description": "Portal-style movement, locally imported character/gun models and working portal pairs inside Minecraft.",
   "authors": ["N0M3KM"],
   "license": "MIT",
   "contact": {
@@ -11,6 +11,7 @@
     "issues": "https://github.com/N0M3KM/PortalMC/issues"
   },
   "environment": "*",
+  "accessWidener": "portalmod.accesswidener",
   "mixins": ["portalmod.mixins.json", {"config": "portalmod.client.mixins.json", "environment": "client"}],
   "entrypoints": {
     "main": ["dev.portalmod.PortalMod"],

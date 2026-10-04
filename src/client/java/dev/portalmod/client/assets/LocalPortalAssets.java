@@ -63,6 +63,7 @@ public final class LocalPortalAssets {
         textures.put(material, id);
     }
     public static void submitGun(PoseStack pose, SubmitNodeCollector collector, int light, float age, float swing) {
+        if (config.gunFullBright) light = net.minecraft.util.LightCoordsUtil.FULL_BRIGHT;
         pose.pushPose();
         float time = (System.nanoTime() - lastFire) / 1.0e9f;
         float kick = time >= 0 && time < config.fireDurationSeconds ? (float) Math.sin(time / config.fireDurationSeconds * Math.PI) : 0;

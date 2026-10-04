@@ -42,7 +42,7 @@ public final class MovementPayloads {
         @Override public Type<Settings> type() { return TYPE; }
     }
 
-    public record State(long epoch, long acknowledged, boolean active, Identifier dimension, MotionState motion)
+    public record State(long epoch, long acknowledged, boolean active, Identifier dimension, MotionState motion, long portalCrossings, float yaw, float pitch)
             implements CustomPacketPayload {
         public static final Type<State> TYPE = id("movement_state");
         public static final StreamCodec<RegistryFriendlyByteBuf, State> CODEC = new StreamCodec<>() {
@@ -50,13 +50,14 @@ public final class MovementPayloads {
                 long epoch = b.readVarLong(); long ack = b.readVarLong(); boolean active = b.readBoolean();
                 Identifier dimension = Identifier.parse(b.readUtf(256));
                 return new State(epoch, ack, active, dimension, new MotionState(readVector(b), readVector(b),
-                        b.readBoolean(), b.readBoolean(), b.readBoolean()));
+                        b.readBoolean(), b.readBoolean(), b.readBoolean()), b.readVarLong(), b.readFloat(), b.readFloat());
             }
             @Override public void encode(RegistryFriendlyByteBuf b, State p) {
                 b.writeVarLong(p.epoch); b.writeVarLong(p.acknowledged); b.writeBoolean(p.active);
                 b.writeUtf(p.dimension.toString(), 256);
                 writeVector(b, p.motion.position()); writeVector(b, p.motion.velocity());
                 b.writeBoolean(p.motion.grounded()); b.writeBoolean(p.motion.jumpHeld()); b.writeBoolean(p.motion.crouched());
+                b.writeVarLong(p.portalCrossings); b.writeFloat(p.yaw); b.writeFloat(p.pitch);
             }
         };
         @Override public Type<State> type() { return TYPE; }

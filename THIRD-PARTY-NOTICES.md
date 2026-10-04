@@ -18,3 +18,9 @@ trademark. This project is unofficial and is not endorsed by those companies.
 No Valve models, textures, sounds, voice lines, music or engine binaries are
 included. The test-token texture is original and reproducible using
 `tools/generate-placeholder-texture.ps1`.
+
+An optional runtime loader reads models and textures from the user's own Portal 2
+installation. Those assets retain their owners' rights and are not covered by
+this project's MIT license. They are decoded in memory and never included in
+source control or the distributable. The format readers are original Java code;
+no Source engine or third-party model-loader implementation is bundled.

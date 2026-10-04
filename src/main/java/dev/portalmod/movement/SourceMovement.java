@@ -49,6 +49,7 @@ public final class SourceMovement {
             // A small downward query preserves grounded state even while standing still.
             if (grounded) wanted = new Vector(wanted.x(), -config.groundProbeDistance, wanted.z());
             Vector actual = world.resolve(position, wanted, grounded, crouched);
+            Vector before = position;
             position = position.add(actual);
             boolean landed = wanted.y() < 0 && different(wanted.y(), actual.y());
             velocity = new Vector(different(wanted.x(), actual.x()) ? 0 : velocity.x(),
@@ -56,6 +57,9 @@ public final class SourceMovement {
                     different(wanted.z(), actual.z()) ? 0 : velocity.z());
             grounded = landed;
             if (!grounded) velocity = velocity.add(new Vector(0, -gravity * dt / 2, 0));
+            MotionState traversed = world.traverse(before, new MotionState(position, velocity, grounded, input.jump(), crouched));
+            position = traversed.position(); velocity = traversed.velocity(); grounded = traversed.grounded();
+            wish = world.rotateWish(wish);
         }
         return new MotionState(position, clamp(velocity, config.maxVelocity / units), grounded, input.jump(), crouched);
     }

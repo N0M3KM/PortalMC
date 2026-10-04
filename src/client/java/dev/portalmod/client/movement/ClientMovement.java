@@ -26,6 +26,7 @@ public final class ClientMovement implements MovementHooks.ClientBridge {
     private int playerId = -1;
     private int lastTick = -1;
     private MotionState lastAuthority;
+    private long portalCrossings;
 
     public void initialize() {
         MovementHooks.installClient(this);
@@ -44,6 +45,7 @@ public final class ClientMovement implements MovementHooks.ClientBridge {
         pending.clear(); epoch = 0; sequence = 0; acknowledged = 0;
         serverActive = false; jumpHeld = false; playerId = -1; lastTick = -1;
         lastAuthority = null;
+        portalCrossings = 0;
     }
 
     @Override public boolean active(Player p) {
@@ -63,8 +65,10 @@ public final class ClientMovement implements MovementHooks.ClientBridge {
             // Await acknowledgement; never discard a command while pretending it was sent.
             return true;
         }
+        MinecraftCollisionWorld collision = new MinecraftCollisionWorld(p);
         MotionState next = SourceMovement.tick(MinecraftCollisionWorld.capture(p, jumpHeld), input,
-                config, new MinecraftCollisionWorld(p), p.isUsingItem());
+                config, collision, p.isUsingItem());
+        portalCrossings += collision.crossingCount();
         MinecraftCollisionWorld.apply(p, next);
         jumpHeld = next.jumpHeld();
         pending.addLast(new Predicted(++sequence, input, p.isUsingItem(), next));
@@ -80,6 +84,12 @@ public final class ClientMovement implements MovementHooks.ClientBridge {
         if (fresh) {
             pending.clear(); epoch = payload.epoch(); sequence = payload.acknowledged();
             playerId = p.getId(); lastTick = -1;
+            portalCrossings = payload.portalCrossings();
+        }
+        if (payload.portalCrossings() > portalCrossings) {
+            // Authority can cross before a client's prediction when portal/chunk packets arrive late.
+            p.setYRot(payload.yaw()); p.setXRot(payload.pitch()); p.yRotO = payload.yaw(); p.xRotO = payload.pitch();
+            portalCrossings = payload.portalCrossings();
         }
         acknowledged = payload.acknowledged();
         boolean authorityChanged = lastAuthority == null || !matches(lastAuthority, payload.motion());
@@ -93,7 +103,7 @@ public final class ClientMovement implements MovementHooks.ClientBridge {
         MotionState replayed = payload.motion();
         ArrayDeque<Predicted> rebuilt = new ArrayDeque<>();
         for (Predicted command : pending) {
-            replayed = SourceMovement.tick(replayed, command.input(), config, new MinecraftCollisionWorld(p), command.usingItem());
+            replayed = SourceMovement.tick(replayed, command.input(), config, new MinecraftCollisionWorld(p, false), command.usingItem());
             rebuilt.addLast(new Predicted(command.sequence(), command.input(), command.usingItem(), replayed));
         }
         pending.clear(); pending.addAll(rebuilt);

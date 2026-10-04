@@ -26,12 +26,13 @@ public final class ServerMovement {
     private static final class Session {
         final ServerPlayer player;
         long epoch = ++nextEpoch;
+        long portalCrossings;
         InputQueue queue = new InputQueue();
         boolean active;
         boolean jumpHeld;
         boolean timedOut;
         Session(ServerPlayer player) { this.player = player; }
-        void reset() { epoch = ++nextEpoch; queue = new InputQueue(); jumpHeld = false; timedOut = false; }
+        void reset() { epoch = ++nextEpoch; queue = new InputQueue(); jumpHeld = false; timedOut = false; portalCrossings = 0; }
     }
 
     private ServerMovement() { }
@@ -98,33 +99,37 @@ public final class ServerMovement {
             InputQueue.Command command;
             while ((command = s.queue.poll()) != null) {
                 s.timedOut = false;
-                simulate(p, s, command.input());
+                if (simulate(p, s, command.input())) tickStart = p.position();
                 if (!MovementHooks.eligible(p)) break;
             }
             if (s.timedOut || s.queue.idleTicks() >= config.inputGraceTicks) {
                 // Withholding input must not allow a client to hover indefinitely.
                 if (!s.timedOut) { s.reset(); s.timedOut = true; }
-                simulate(p, s, new MovementInput(0, 0, p.getYRot(), p.getXRot(), false, p.isShiftKeyDown()));
+                if (simulate(p, s, new MovementInput(0, 0, p.getYRot(), p.getXRot(), false, p.isShiftKeyDown()))) tickStart = p.position();
             }
             p.applyEffectsFromBlocks(tickStart, p.position());
             p.level().getChunkSource().move(p);
         }
         ServerPlayNetworking.send(p, new MovementPayloads.State(s.epoch, s.queue.acknowledged(), s.active,
-                p.level().dimension().identifier(), MinecraftCollisionWorld.capture(p, s.jumpHeld)));
+                p.level().dimension().identifier(), MinecraftCollisionWorld.capture(p, s.jumpHeld), s.portalCrossings, p.getYRot(), p.getXRot()));
     }
 
-    private static void simulate(ServerPlayer p, Session s, MovementInput input) {
+    private static boolean simulate(ServerPlayer p, Session s, MovementInput input) {
         p.setYRot(input.yaw());
         p.setXRot(input.pitch());
         MotionState before = MinecraftCollisionWorld.capture(p, s.jumpHeld);
-        MotionState after = SourceMovement.tick(before, input, ConfigManager.server(), new MinecraftCollisionWorld(p), p.isUsingItem());
+        MinecraftCollisionWorld collision = new MinecraftCollisionWorld(p);
+        MotionState after = SourceMovement.tick(before, input, ConfigManager.server(), collision, p.isUsingItem());
+        s.portalCrossings += collision.crossingCount();
         Vec3 from = p.position();
         MinecraftCollisionWorld.apply(p, after);
         Vec3 delta = p.position().subtract(from);
+        if (collision.crossed()) { p.resetFallDistance(); delta = MinecraftCollisionWorld.toMinecraft(after.velocity().scale(0.05)); }
         p.setKnownMovement(delta);
         p.doCheckFallDamage(delta.x, delta.y, delta.z, after.grounded());
         p.checkMovementStatistics(delta.x, delta.y, delta.z);
         if (input.forward() != 0 || input.sideways() != 0 || input.jump()) p.resetLastActionTime();
         s.jumpHeld = after.jumpHeld();
+        return collision.crossed();
     }
 }

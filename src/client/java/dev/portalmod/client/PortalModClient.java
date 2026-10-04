@@ -6,12 +6,13 @@ import dev.portalmod.client.movement.ClientMovement;
 import dev.portalmod.client.assets.LocalPortalAssets;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 
-/** Client rendering and input will live in this source set in later phases. */
+/** Client-only prediction, local model imports and portal rendering. */
 public final class PortalModClient implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
         new ClientMovement().initialize();
         ClientLifecycleEvents.CLIENT_STARTED.register(LocalPortalAssets::load);
+        dev.portalmod.client.portal.ClientPortals.initialize();
         PortalMod.LOGGER.info("PortalMC client initialized.");
     }
 }

@@ -6,7 +6,7 @@
 | `models/item/hello_world.json` | Original model declaration using Minecraft's standard generated-item parent | Phase 0 |
 | `items/hello_world.json` | Original item model declaration | Phase 0 |
 | `lang/en_us.json` | Original English text | Phase 0 |
-| `textures/item/portal_gun.png` | Original procedural pixel-art silhouette | Phase 1 placeholder; no firing/model animations |
+| `textures/item/portal_gun.png` | Original procedural pixel-art silhouette | Inventory/dropped-item sprite and local-model fallback |
 | `textures/item/long_fall_boots.png` | Original procedural pixel-art silhouette | Phase 1 placeholder; feet equipment for fall protection |
 | Gun/boots item and generated model JSON | Original declarations using Minecraft's generated-item parent | Phase 1 |
 

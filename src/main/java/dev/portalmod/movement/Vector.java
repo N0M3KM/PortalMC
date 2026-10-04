@@ -9,4 +9,5 @@ public record Vector(double x, double y, double z) {
     public double horizontalLength() { return Math.hypot(x, z); }
     public double lengthSquared() { return x * x + y * y + z * z; }
     public double dot(Vector other) { return x * other.x + y * other.y + z * other.z; }
+    public Vector cross(Vector v) { return new Vector(y * v.z - z * v.y, z * v.x - x * v.z, x * v.y - y * v.x); }
 }

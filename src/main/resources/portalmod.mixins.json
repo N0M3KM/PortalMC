@@ -2,6 +2,6 @@
   "required": true,
   "package": "dev.portalmod.mixin",
   "compatibilityLevel": "JAVA_25",
-  "mixins": ["EntityCollisionAccessor", "PlayerMovementMixin", "LivingMovementMixin", "ServerConnectionMixin"],
+  "mixins": ["EntityCollisionAccessor", "PlayerMovementMixin", "LivingMovementMixin", "ServerConnectionMixin", "PortalCollisionMixin", "PortalProjectileClipMixin", "PortalEntityTrackingMixin", "PortalTrackingRefreshMixin", "PortalEntityMovementMixin", "PortalProjectileAccessor", "PortalArrowAccessor", "PortalProjectileHitsMixin"],
   "injectors": { "defaultRequire": 1 }
 }

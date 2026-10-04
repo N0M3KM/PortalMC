@@ -6,9 +6,9 @@ is conceptual inspiration, not a dependency or a shared-memory engine bridge.
 ## Environment separation
 
 `src/main` contains registration, configuration, input payload definitions,
-deterministic movement math and authoritative movement. Portal state is future work.
-`src/client` contains client initialization, prediction, input and future
-character, camera and portal rendering. Item visual assets also live in
+deterministic movement math, authoritative movement, portal placement, chunk
+tickets and entity traversal/tracking. `src/client` contains initialization,
+prediction, input, local model loading, camera and portal rendering. Item visual assets also live in
 `src/client/resources`, and Loom packages both source sets in the mod JAR.
 Common code must not import client
 classes. Dedicated startup is a required check for each phase.
@@ -46,13 +46,16 @@ Server gameplay settings go in `config/portalmod.json` and are synchronized.
 Visual settings go in `config/portalmod-client.json`. No unused future config
 keys are implemented in Phase 0.
 
-## Phase 2 design
+## Phase 2 implementation
 
-Original gun model with idle/fire/portal-open states and an original orange
-jumpsuit character with long-fall boots. Synchronize appearance to modded peers.
-No Valve assets, engine integration or external Portal 2 process.
+At the user's request, the optional client loader reads the actual gun and Chell
+models directly from a local Portal 2 installation. Original Java VPK, MDL/VVD/VTX
+and VTF readers decode these into memory; no Valve assets are exported or bundled.
+Procedural idle, recoil and character poses replace Valve animation sequences.
+Missing local assets fall back to original item sprites and the Minecraft player.
+See `testing/phase-2.md` for supported formats and visual limitations.
 
-## Phase 3 design
+## Phase 3 implementation
 
 Custom same-dimension backend, one blue/orange pair per owner. Server validates
 fire requests, range, item, surface tag, full-block geometry and aperture
@@ -65,9 +68,11 @@ scaling. Sweep movement segments, continue unused travel at the destination,
 and bound crossings per step. Players, fitting mobs, items and projectiles use
 the same geometric contract. Large mobs cannot fit a fixed 1x2 aperture.
 
-Entities halfway through need source/destination collision constraints and
-clipped rendering on both sides. Do not delete the supporting wall blocks.
-Camera roll recovers upright without changing Minecraft gravity.
+The player solver continues remaining travel against destination collision.
+Native entity moves split at the plane, and projectile sweeps continue at the
+exit using native hit handling. Supporting wall blocks remain intact. Camera
+orientation becomes upright immediately without changing Minecraft gravity.
+Duplicated clipped entity halves and smooth camera roll remain visual limitations.
 
 ## Rendering decision
 
@@ -80,15 +85,17 @@ Its implementation describes stencil recursion, clipping, remote chunk/entity
 tracking and split collision:
 https://qouteall.fun/immptl/wiki/Implementation-Details.html
 
-Proposed custom implementation renders destination views into pooled targets,
-deepest recursion first, then composites with aperture/depth masks. Transform
-the camera using traversal geometry; clip against the destination plane and
-restore all nested render state. Exact 26.3 renderer hooks and clipping APIs
-remain unverified until Phase 3; no compatibility claim is made now.
+The custom implementation renders bounded destination scenes into pooled targets,
+deepest recursion first, then composites against world depth. Camera transforms
+reuse traversal geometry; an oblique reverse-Z near plane clips the exit. Native
+26.3 baked models, fluids, block entities and entity feature renderers supply the
+scene. It does not recursively re-enter the mutable primary LevelRenderer.
+Vanilla OpenGL has passed integrated tests; no Sodium/Iris compatibility claim
+is made. See `testing/phase-3.md` for budgets and omitted world effects.
 
-Server chunk tickets alone are insufficient. Portal viewers need remote chunk
-and entity subscriptions and a client cache/render strategy outside the local
-view distance. Bound subscription radius and release tickets when portals close.
+Server chunk tickets are paired with remote chunk/light packets, native entity
+tracking and a bounded auxiliary client chunk cache outside local view distance.
+Subscriptions have configurable radius/caps; tickets are released when portals close.
 Cross-dimension portals are outside v1 scope.
 
 ## Known risks
@@ -97,7 +104,7 @@ Cross-dimension portals are outside v1 scope.
   adapter. Start with the vanilla renderer.
 - Iris shader depth, shadows and temporal effects may fail in nested views.
   Unsupported combinations need a diagnostic/fallback, not a claim of support.
-- Cap recursion (proposed default 2), total view passes, target resolution,
+- Cap recursion (default 2), total view passes, target resolution,
   subscription radius and memory. Cull invisible views.
 - Reject noncoplanar surfaces, corner intersections and overlapping apertures.
 - Handle floor support, entity halves, blocked exits and high-speed projectiles

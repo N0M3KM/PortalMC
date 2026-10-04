@@ -17,7 +17,7 @@ Configure `config/portalmod-client.json`:
 ```
 
 Other generated fields tune texture resolution, units, gun position/scale,
-idle sway, fire recoil/duration and procedural walk/arm angles. Restart the
+idle sway, fire recoil/duration, gun full-bright lighting and procedural walk/arm angles. Restart the
 client after changing these settings. Missing installations or unsupported
 assets fall back to the original item/Minecraft character visuals with a log
 message; a dedicated server never reads these files.
@@ -55,8 +55,8 @@ animation sequences. Source material shaders, facial flexes, jiggle bones and
 glass are not reproduced. The player replacement currently suppresses vanilla
 cosmetic/equipment layers and name tags. Gun inventory/dropped/third-person item
 visuals remain the original sprite; the imported model replaces first-person
-holding. Recoil is triggered by the upcoming portal shot handler. All players
+holding. Recoil is triggered by the portal shot handler. All players
 seen by this client use the Chell appearance when enabled; clients choose their
 own local visuals and must supply their own installation.
 
-Portal placement, rendering and traversal are Phase 3, now requested by the user.
+Portal placement, rendering and traversal are covered in `phase-3.md`.

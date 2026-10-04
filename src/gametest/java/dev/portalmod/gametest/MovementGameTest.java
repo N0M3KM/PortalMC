@@ -105,6 +105,7 @@ public final class MovementGameTest implements FabricClientGameTest {
             context.waitTicks(10);
             context.takeScreenshot("phase-2-chell");
             context.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
+            PortalGameTest.run(context, world);
         }
     }
 

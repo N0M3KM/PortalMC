@@ -10,6 +10,7 @@ public final class LocalAssetConfig {
     public String portal2Directory = "D:\\SteamLibrary\\steamapps\\common\\Portal 2";
     public boolean chellCharacter = true;
     public boolean portalGunModel = true;
+    public boolean gunFullBright = true;
     public int maxTextureDimension = 1024;
     public float unitsPerBlock = 40;
     public float gunScale = 0.025f;

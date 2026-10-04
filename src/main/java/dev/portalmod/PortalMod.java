@@ -20,6 +20,7 @@ public final class PortalMod implements ModInitializer {
         MovementPayloads.register();
         ServerMovement.initialize();
         MovementCommands.initialize();
-        LOGGER.info("PortalMC Phase 1 initialized; Portal movement enabled: {}", ConfigManager.server().enabled);
+        dev.portalmod.portal.PortalServer.initialize();
+        LOGGER.info("PortalMC initialized; Portal movement enabled: {}", ConfigManager.server().enabled);
     }
 }
