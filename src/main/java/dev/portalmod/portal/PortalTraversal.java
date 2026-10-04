@@ -22,6 +22,7 @@ public final class PortalTraversal {
         PortalFrame nearest = null, destination = null; double closest = Double.POSITIVE_INFINITY;
         for (PortalFrame p : PortalWorld.frames(entity.level())) {
             if (!p.dimension().equals(entity.level().dimension().identifier().toString())) continue;
+            if(!p.intersectsSweep(start,end,box.getXsize()*.5,box.getYsize()*.5,box.getZsize()*.5,PortalWorld.config(entity.level()).collisionMargin)) continue;
             PortalFrame exit = PortalWorld.partner(entity.level(), p); if (exit == null) continue;
             double t = p.crossing(start, end);
             if (t < 0 || t >= closest || !p.contains(start.add(end.subtract(start).scale(t)), PortalWorld.extent(box, p.right()), PortalWorld.extent(box, p.up()))) continue;
@@ -45,6 +46,7 @@ public final class PortalTraversal {
         MotionState state = new MotionState(MinecraftCollisionWorld.fromMinecraft(entity.position()), MinecraftCollisionWorld.fromMinecraft(entity.getDeltaMovement()).scale(20), entity.onGround(), false, false);
         Crossing crossing = cross(entity, previousFeet, state);
         if (crossing == null) return;
+        if(entity instanceof ServerPlayer player) PortalServer.recordCrossings(player,1,(float)Math.sqrt(crossing.state().velocity().lengthSquared()),true);
         rotateView(entity, crossing);
         Vec3 position = MinecraftCollisionWorld.toMinecraft(crossing.state.position()), velocity = MinecraftCollisionWorld.toMinecraft(crossing.state.velocity().scale(0.05));
         if (entity instanceof net.minecraft.world.entity.projectile.Projectile projectile) {

@@ -2,6 +2,6 @@
   "required": true,
   "package": "dev.portalmod.client.mixin",
   "compatibilityLevel": "JAVA_25",
-  "client": ["PortalHandMixin", "ChellRendererMixin", "RemotePortalChunksMixin", "PortalRenderMixin"],
+  "client": ["CameraEffectsMixin", "PortalHandMixin", "ChellRendererMixin", "RemotePortalChunksMixin", "PortalRenderMixin"],
   "injectors": {"defaultRequire": 1}
 }

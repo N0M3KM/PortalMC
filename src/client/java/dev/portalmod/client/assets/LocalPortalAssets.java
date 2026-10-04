@@ -5,6 +5,12 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
 import dev.portalmod.PortalMod;
 import dev.portalmod.assets.SourceModel;
+import dev.portalmod.assets.ArmaturePose;
+import dev.portalmod.client.visual.OriginalGeometry;
+import dev.portalmod.client.visual.CharacterAnimation;
+import dev.portalmod.client.visual.GunAnimation;
+import dev.portalmod.client.visual.OriginalCharacter;
+import dev.portalmod.client.visual.PortalVisualConfig;
 import dev.portalmod.assets.SourceModelReader;
 import dev.portalmod.assets.VpkArchive;
 import dev.portalmod.assets.VtfImage;
@@ -29,13 +35,29 @@ public final class LocalPortalAssets {
     private static final int[] TRIANGLE_QUAD = {0, 2, 1, 1};
     public static LocalAssetConfig config = new LocalAssetConfig();
     private static SourceModel gun, chell;
+    private static Vector3f gunGrip = new Vector3f(), gunEmitter = new Vector3f();
     private static final Map<String, Identifier> textures = new HashMap<>();
-    private static long lastFire;
+    private record CacheKey(SourceModel model,int entity) { }
+    private static final class CachedMesh {
+        long poseFrame=-1,vertexFrame=-1; Matrix4f[] pose; float[] vertices;
+    }
+    private static final Map<CacheKey,CachedMesh> meshCache=new java.util.LinkedHashMap<>();
+    public static void clearPoseCache() { meshCache.clear(); }
+    private static CachedMesh cache(SourceModel model,int entity) {
+        CacheKey key=new CacheKey(model,entity); CachedMesh found=meshCache.get(key);
+        if(found==null) { if(meshCache.size()>=512) meshCache.remove(meshCache.keySet().iterator().next()); found=new CachedMesh(); meshCache.put(key,found); }
+        return found;
+    }
+    private static Matrix4f[] poseCached(SourceModel model,int entity,java.util.function.Supplier<Matrix4f[]> posing) {
+        var c=dev.portalmod.client.portal.PortalRenderer.config(); if(c==null || !c.cacheModelPoses) return posing.get();
+        CachedMesh cached=cache(model,entity); long frame=dev.portalmod.client.portal.PortalRenderer.frameIndex;
+        if(cached.poseFrame!=frame) { cached.pose=posing.get(); cached.poseFrame=frame; }
+        return cached.pose;
+    }
     private LocalPortalAssets() { }
     public static boolean gunReady() { return gun != null && config.portalGunModel; }
-    public static boolean chellReady() { return chell != null && config.chellCharacter; }
+    public static boolean chellReady() { return (chell != null && config.chellCharacter) || PortalVisualConfig.current.originalCharacterFallback; }
     public static int loadedTriangles() { return (gun == null ? 0 : gun.triangleCount()) + (chell == null ? 0 : chell.triangleCount()); }
-    public static void fired() { lastFire = System.nanoTime(); }
     public static void load(Minecraft client) {
         try {
             config = LocalAssetConfig.load();
@@ -47,6 +69,10 @@ public final class LocalPortalAssets {
                 if (!textures.containsKey(mesh.material())) loadTexture(client, archive, mesh.material());
             }
             gun = loadedGun; chell = loadedChell;
+            int hand = ArmaturePose.bone(gun, "ValveBiped.Bip01_R_Hand");
+            if (hand >= 0) gunGrip = ArmaturePose.bind(gun)[hand].getTranslation(new Vector3f());
+            int emitter=ArmaturePose.bone(gun,"ValveBiped.Front_Cover_Stop");
+            if(emitter>=0) gunEmitter=ArmaturePose.bind(gun)[emitter].getTranslation(new Vector3f());
             PortalMod.LOGGER.info("Local Portal 2 assets loaded in memory: gun {} triangles, Chell {} triangles. No assets exported.", gun.triangleCount(), chell.triangleCount());
         } catch (Exception e) { PortalMod.LOGGER.warn("Portal 2 local models unavailable; using Minecraft/placeholder visuals: {}", e.toString()); }
     }
@@ -63,55 +89,115 @@ public final class LocalPortalAssets {
         textures.put(material, id);
     }
     public static void submitGun(PoseStack pose, SubmitNodeCollector collector, int light, float age, float swing) {
+        var c = PortalVisualConfig.current;
         if (config.gunFullBright) light = net.minecraft.util.LightCoordsUtil.FULL_BRIGHT;
         pose.pushPose();
-        float time = (System.nanoTime() - lastFire) / 1.0e9f;
-        float kick = time >= 0 && time < config.fireDurationSeconds ? (float) Math.sin(time / config.fireDurationSeconds * Math.PI) : 0;
-        pose.translate(config.gunX, config.gunY + Math.sin(age * 0.08f) * config.idleSway, config.gunZ + kick * config.fireRecoil);
-        pose.rotateDegrees(Axis.XP, kick * -8);
-        pose.scale(config.gunScale, config.gunScale, config.gunScale);
-        pose.translate(0, -config.gunModelOriginY, 0);
-        submit(gun, pose, collector, light, null);
+        var animation=GunAnimation.sample();
+        pose.translate(config.gunX+animation.bobX(),config.gunY+animation.sway()+animation.bobY(),config.gunZ+animation.kick()*config.fireRecoil);
+        pose.rotateDegrees(Axis.XP,-animation.kick()*c.fireKickDegrees);
+        pose.rotateDegrees(Axis.ZP,animation.fizzle()*c.fizzleShakeDegrees);
+        submitHeldGun(pose, collector, light);
+        if (c.firstPersonHands) {
+            Vector3f grip = new Vector3f(), wrist = new Vector3f(0,-c.handRadius,c.handRadius);
+            Vector3f elbow = new Vector3f(c.viewArmX-config.gunX,c.viewArmY-config.gunY,c.viewArmZ-config.gunZ);
+            OriginalGeometry.tube(pose,collector,elbow,wrist,c.forearmRadius,0xffefc5a4,light);
+            OriginalGeometry.hand(pose,collector,wrist,grip,light);
+        }
+        pose.popPose();
+    }
+    public static void submitHeldGun(PoseStack pose, SubmitNodeCollector collector, int light) {
+        var player=Minecraft.getInstance().player; submitHeldGun(pose,collector,light,player==null?-1:player.getId());
+    }
+    public static void submitHeldGun(PoseStack pose,SubmitNodeCollector collector,int light,int entityId) {
+        var animation=GunAnimation.forEntity(entityId);
+        if (!gunReady()) { OriginalGeometry.gun(pose,collector,light,animation); return; }
+        pose.pushPose(); pose.scale(config.gunScale,config.gunScale,config.gunScale);
+        // The gun grip is the authored wrist pivot, not the mesh origin or an arbitrary world offset.
+        pose.translate(-gunGrip.x,-gunGrip.y,gunGrip.z);
+        Matrix4f[] mechanism=poseCached(gun,entityId,() -> gunMechanism(animation));
+        submit(gun,pose,collector,light,ArmaturePose.skin(gun,mechanism),entityId);
+        if(PortalVisualConfig.current.gunGlow) {
+            var c=PortalVisualConfig.current; Vector3f emitter=new Vector3f(gunEmitter.x,gunEmitter.y,-gunEmitter.z);
+            OriginalGeometry.tube(pose,collector,emitter,new Vector3f(emitter).add(0,0,-c.emitterTipOffset/config.gunScale),c.emitterRadius/config.gunScale,animation.color(),net.minecraft.util.LightCoordsUtil.FULL_BRIGHT);
+        }
         pose.popPose();
     }
     public static void submitChell(AvatarRenderState state, PoseStack pose, SubmitNodeCollector collector) {
-        pose.pushPose();
-        pose.rotateDegrees(Axis.YP, 180 - state.bodyRot);
-        float scale = state.scale / config.unitsPerBlock;
-        pose.scale(scale, scale, scale);
-        if (state.isCrouching) pose.translate(0, -8, 0);
-        Matrix4f[] skin = skinMatrices(chell, state);
-        submit(chell, pose, collector, state.lightCoords, skin);
+        var c=PortalVisualConfig.current;
+        var entity=Minecraft.getInstance().level == null ? null : Minecraft.getInstance().level.getEntity(state.id);
+        boolean holding=entity instanceof net.minecraft.world.entity.player.Player player &&
+            (player.getMainHandItem().is(dev.portalmod.PortalItems.PORTAL_GUN) || player.getOffhandItem().is(dev.portalmod.PortalItems.PORTAL_GUN));
+        pose.pushPose(); pose.rotateDegrees(Axis.YP,180-state.bodyRot);
+        float scale=state.scale/config.unitsPerBlock; pose.scale(scale,scale,scale);
+        var animation=CharacterAnimation.pose(state.id,CharacterAnimation.partialTicks());
+        pose.translate(0,-(c.characterAnimation?animation.crouch():(state.isCrouching?1:0))*c.crouchDropUnits-animation.land()*c.landingMaxDropUnits,0);
+        if(chell==null || !config.chellCharacter) {
+            OriginalCharacter.submit(state,animation,pose,collector,holding); pose.popPose(); return;
+        }
+        Matrix4f[] global=poseCached(chell,state.id,() -> posedBones(chell,state,holding));
+        submit(chell,pose,collector,state.lightCoords,ArmaturePose.skin(chell,global),state.id);
+        if(holding && c.thirdPersonGun) {
+            int wrist=ArmaturePose.bone(chell,"wrist_R");
+            if(wrist>=0) {
+                Vector3f grip=global[wrist].getTranslation(new Vector3f());
+                pose.pushPose(); pose.translate(grip.x,grip.y,-grip.z);
+                pose.rotateDegrees(Axis.YP,-(c.characterAnimation?animation.yaw():Math.clamp(state.yRot,-c.headYawLimit,c.headYawLimit)));
+                pose.rotateDegrees(Axis.XP,-Math.clamp(c.characterAnimation?animation.pitch():state.xRot,-c.aimPitchLimit,c.aimPitchLimit)+animation.recoil()*c.characterRecoilDegrees);
+                pose.scale(config.unitsPerBlock,config.unitsPerBlock,config.unitsPerBlock);
+                submitHeldGun(pose,collector,state.lightCoords,state.id); pose.popPose();
+            }
+        }
         pose.popPose();
     }
-    private static Matrix4f[] skinMatrices(SourceModel model, AvatarRenderState state) {
-        Matrix4f[] global = new Matrix4f[model.bones().length], result = new Matrix4f[global.length];
-        float swing = (float) Math.sin(state.walkAnimationPos) * Math.min(1, state.walkAnimationSpeed) * (float) Math.toRadians(config.walkSwingDegrees);
-        for (int i = 0; i < global.length; i++) {
-            SourceModel.Bone b = model.bones()[i]; float[] p = b.localPosition(), q = b.localQuaternion();
-            Matrix4f local = new Matrix4f().translation(p[0], p[1], p[2]).rotate(new Quaternionf(q[0], q[1], q[2], q[3]));
-            // Original procedural animation on the user's locally loaded skeleton.
-            global[i] = b.parent() < 0 ? local : new Matrix4f(global[b.parent()]).mul(local);
-            Vector3f pivot = global[i].getTranslation(new Vector3f());
-            Matrix4f adjustment = new Matrix4f().translation(pivot);
-            boolean changed = false;
-            if (b.name().startsWith("bicep_")) {
-                adjustment.rotateZ((float) Math.toRadians(config.armRestDegrees) * (pivot.x > 0 ? -1 : 1)); changed = true;
+    private static Matrix4f[] posedBones(SourceModel model,AvatarRenderState state,boolean holding) {
+        var c=PortalVisualConfig.current; Matrix4f[] global=ArmaturePose.bind(model);
+        var a=CharacterAnimation.pose(state.id,CharacterAnimation.partialTicks());
+        float swing=(float)Math.sin(a.stride())*a.speed()*(float)Math.toRadians(c.strideDegrees);
+        if(!c.characterAnimation) swing=(float)Math.sin(state.walkAnimationPos)*Math.min(1,state.walkAnimationSpeed)*(float)Math.toRadians(config.walkSwingDegrees);
+        if(!c.strideAnimation && c.characterAnimation) swing=0;
+        float bend=a.crouch()*c.crouchBendDegrees+a.air()*c.airborneBendDegrees+a.jump()*c.jumpBendDegrees+a.land()*c.landingBendDegrees;
+        ArmaturePose.rotate(model,global,"spine1",new Quaternionf().rotationXYZ((float)Math.toRadians(a.tilt()+a.crouch()*c.crouchBendDegrees),0,(float)Math.toRadians(a.lean()+a.idle())));
+        ArmaturePose.rotate(model,global,"thigh_L",new Quaternionf().rotationX(swing+(float)Math.toRadians(bend)));
+        ArmaturePose.rotate(model,global,"thigh_R",new Quaternionf().rotationX(-swing+(float)Math.toRadians(bend)));
+        ArmaturePose.rotate(model,global,"knee_L",new Quaternionf().rotationX((float)Math.toRadians(-bend-Math.max(0,Math.sin(a.stride()))*a.speed()*c.kneeDegrees)));
+        ArmaturePose.rotate(model,global,"knee_R",new Quaternionf().rotationX((float)Math.toRadians(-bend-Math.max(0,-Math.sin(a.stride()))*a.speed()*c.kneeDegrees)));
+        float pitch=c.characterAnimation?a.pitch():Math.clamp(state.xRot,-c.headPitchLimit,c.headPitchLimit);
+        float yaw=c.characterAnimation?a.yaw():Math.clamp(state.yRot,-c.headYawLimit,c.headYawLimit);
+        ArmaturePose.rotate(model,global,"head",new Quaternionf().rotationYXZ((float)Math.toRadians(c.headFollow?-yaw:0),(float)Math.toRadians(c.headFollow?Math.clamp(pitch,-c.headPitchLimit,c.headPitchLimit):0),0));
+        if(c.armPose) {
+            float aimPitch=(float)Math.toRadians(-Math.clamp(pitch,-c.aimPitchLimit,c.aimPitchLimit)+a.recoil()*c.characterRecoilDegrees);
+            float aimYaw=(float)Math.toRadians(yaw);
+            Quaternionf aim=new Quaternionf().rotationYXZ(aimYaw,aimPitch,0);
+            for(String side:new String[]{"R","L"}) {
+                float sign=side.equals("R")?-1:1;
+                Vector3f target=holding ? new Vector3f(side.equals("R")?c.gripX:c.supportGripX,side.equals("R")?c.gripY:c.supportGripY,side.equals("R")?c.gripZ:c.supportGripZ) : new Vector3f(sign*9,42,(side.equals("R")?-1:1)*swing*8);
+                if(holding) target.sub(0,60,0).rotate(aim).add(0,60,0);
+                ArmaturePose.arm(model,global,side,target,new Vector3f(sign*c.armPoleOut,c.armPoleDown,c.armPoleForward));
             }
-            if (b.name().equals("thigh_L") || b.name().equals("thigh_R")) {
-                adjustment.rotateX(b.name().endsWith("_L") ? swing : -swing); changed = true;
-            }
-            if (b.name().equals("head")) { adjustment.rotateX((float) Math.toRadians(state.xRot)); changed = true; }
-            if (changed) global[i] = adjustment.translate(-pivot.x, -pivot.y, -pivot.z).mul(global[i]);
-            result[i] = new Matrix4f(global[i]).mul(matrix(b.inverseBind()));
         }
-        return result;
+        return global;
     }
-    private static Matrix4f matrix(float[] a) {
-        return new Matrix4f(a[0], a[4], a[8], 0, a[1], a[5], a[9], 0, a[2], a[6], a[10], 0, a[3], a[7], a[11], 1);
+    private static Matrix4f[] gunMechanism(GunAnimation.Pose animation) {
+        Matrix4f[] mechanism=ArmaturePose.bind(gun); var c=PortalVisualConfig.current;
+        if(c.gunProngs) {
+            int cover=ArmaturePose.bone(gun,"ValveBiped.Front_Cover");
+            if(cover>=0) ArmaturePose.translate(gun,mechanism,"ValveBiped.Front_Cover",new Vector3f(0,0,animation.opening()*c.emitterTravel/config.gunScale));
+            for(String name:new String[]{"ValveBiped.Arm1_A","ValveBiped.Arm2_A","ValveBiped.Arm3_A"}) {
+                int joint=ArmaturePose.bone(gun,name); if(joint<0) continue;
+                Vector3f radial=mechanism[joint].getTranslation(new Vector3f()).sub(gunEmitter); radial.z=0;
+                if(radial.lengthSquared()<1e-6f) radial.set(1,0,0); else radial.normalize();
+                ArmaturePose.rotate(gun,mechanism,name,new Quaternionf().fromAxisAngleRad(radial.y,-radial.x,0,(float)Math.toRadians(animation.opening()*c.prongOpenDegrees)));
+            }
+        }
+        return mechanism;
     }
-    private static void submit(SourceModel model, PoseStack pose, SubmitNodeCollector collector, int light, Matrix4f[] skin) {
-        float[] vertices = new float[model.vertices().length * 8];
+    private static void submit(SourceModel model, PoseStack pose, SubmitNodeCollector collector, int light, Matrix4f[] skin,int entityId) {
+        var settings=dev.portalmod.client.portal.PortalRenderer.config();
+        boolean caching=settings!=null && settings.cacheModelPoses;
+        CachedMesh cached=cache(model,entityId); long frame=dev.portalmod.client.portal.PortalRenderer.frameIndex;
+        if(cached.vertices==null) cached.vertices=new float[model.vertices().length*8];
+        float[] vertices=caching?cached.vertices:new float[model.vertices().length*8];
+        if(!caching || cached.vertexFrame!=frame) {
         Vector3f point = new Vector3f(), normal = new Vector3f(), temp = new Vector3f();
         for (int i = 0; i < model.vertices().length; i++) {
             SourceModel.Vertex v = model.vertices()[i]; point.set(v.x(), v.y(), v.z()); normal.set(v.nx(), v.ny(), v.nz());
@@ -127,6 +213,8 @@ public final class LocalPortalAssets {
             vertices[p] = point.x; vertices[p + 1] = point.y; vertices[p + 2] = -point.z;
             vertices[p + 3] = normal.x; vertices[p + 4] = normal.y; vertices[p + 5] = -normal.z;
             vertices[p + 6] = v.u(); vertices[p + 7] = v.v();
+        }
+        cached.vertexFrame=caching?frame:-1;
         }
         for (SourceModel.Mesh mesh : model.meshes()) {
             if (mesh.material().contains("glass")) continue;

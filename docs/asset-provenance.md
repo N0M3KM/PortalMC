@@ -19,3 +19,10 @@ gun and Chell mesh/base-color textures from their Portal 2 install at
 extracted, are not transmitted, and are never packaged or committed. The JAR
 contains only the independently written reader and original placeholders.
 See `testing/phase-2.md` for settings, formats, validation and limitations.
+
+Version 0.5 original assets: the fixed-advance HUD font (`textures/font/telemetry.png`)
+is reproducible with `tools/generate-hud-font.py` using only the Python standard
+library. The radial wisp sprite and stylized gun/hand/character geometry are
+procedurally authored in `OriginalGeometry`/`OriginalCharacter`; no Valve files
+are inputs. Optional existing local imports remain unbundled. See
+`testing/fidelity-0.5.md` for current visual behavior and verification limits.

@@ -17,7 +17,7 @@ public abstract class PortalHandMixin {
     @Inject(method = "submitHandsWithItems", at = @At("HEAD"), cancellable = true)
     private void portalmod$gun(float partialTicks, PoseStack pose, SubmitNodeCollector collector,
                                PlayerRenderState player, FirstPersonHandsAndItemsRenderState state, CallbackInfo ci) {
-        if (LocalPortalAssets.gunReady() && (state.mainHandItem.is(PortalItems.PORTAL_GUN) || state.offHandItem.is(PortalItems.PORTAL_GUN))) {
+        if ((state.mainHandItem.is(PortalItems.PORTAL_GUN) || state.offHandItem.is(PortalItems.PORTAL_GUN))) {
             float age = player.avatarRenderState == null ? 0 : player.avatarRenderState.ageInTicks;
             LocalPortalAssets.submitGun(pose, collector, player.avatarRenderState == null ? 15728880 : player.avatarRenderState.lightCoords, age, 0);
             ci.cancel();

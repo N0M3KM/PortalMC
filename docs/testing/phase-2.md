@@ -1,5 +1,10 @@
 # Phase 2: local Portal 2 models
 
+**Historical baseline:** gameplay/visual validation below is for 0.3/0.4.
+Version 0.5 adds the [fidelity work packages](fidelity-0.5.md), with builds/unit
+checks only and no new in-game validation. Use that report's current controls,
+performance defaults, assets and manual checklist.
+
 The user requested the actual gun and Chell models, superseding the earlier
 placeholder-only preference for their own installation. The mod reads those
 assets from a local Portal 2 installation at runtime. It never launches Portal

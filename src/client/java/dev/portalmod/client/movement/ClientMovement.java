@@ -69,6 +69,7 @@ public final class ClientMovement implements MovementHooks.ClientBridge {
         MotionState next = SourceMovement.tick(MinecraftCollisionWorld.capture(p, jumpHeld), input,
                 config, collision, p.isUsingItem());
         portalCrossings += collision.crossingCount();
+        if(collision.crossingCount()>0) dev.portalmod.client.visual.CameraEffects.exited((float)Math.sqrt(next.velocity().lengthSquared()));
         MinecraftCollisionWorld.apply(p, next);
         jumpHeld = next.jumpHeld();
         pending.addLast(new Predicted(++sequence, input, p.isUsingItem(), next));
@@ -90,6 +91,7 @@ public final class ClientMovement implements MovementHooks.ClientBridge {
             // Authority can cross before a client's prediction when portal/chunk packets arrive late.
             p.setYRot(payload.yaw()); p.setXRot(payload.pitch()); p.yRotO = payload.yaw(); p.xRotO = payload.pitch();
             portalCrossings = payload.portalCrossings();
+            dev.portalmod.client.visual.CameraEffects.exited((float)Math.sqrt(payload.motion().velocity().lengthSquared()));
         }
         acknowledged = payload.acknowledged();
         boolean authorityChanged = lastAuthority == null || !matches(lastAuthority, payload.motion());

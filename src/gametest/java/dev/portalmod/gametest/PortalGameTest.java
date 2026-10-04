@@ -9,6 +9,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContex
 /** Actual gun payloads, wall collision, player prediction and destination render passes. */
 final class PortalGameTest {
     static void run(ClientGameTestContext context, TestSingleplayerContext world) {
+        context.runOnClient(client -> { PortalRenderer.config().recursionDepth=2; PortalRenderer.config().maxRenderPasses=6; PortalRenderer.config().adaptiveRecursion=false; });
         var server = world.getServer();
         server.runCommand("fill -4 79 -4 4 79 55 stone");
         server.runCommand("time set day");

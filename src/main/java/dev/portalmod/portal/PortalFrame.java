@@ -22,4 +22,13 @@ public record PortalFrame(long id, UUID owner, boolean orange, String dimension,
         if (a < 0 || b >= 0 || a == b) return -1;
         return a / (a - b);
     }
+    /** Cheap swept AABB rejection before plane/hull math. Includes endpoint contact and fast sweeps. */
+    public boolean intersectsSweep(Vector from,Vector to,double halfX,double halfY,double halfZ,double margin) {
+        double x=Math.abs(right.x())*.5+Math.abs(up.x())+Math.abs(normal.x())*margin+halfX;
+        double y=Math.abs(right.y())*.5+Math.abs(up.y())+Math.abs(normal.y())*margin+halfY;
+        double z=Math.abs(right.z())*.5+Math.abs(up.z())+Math.abs(normal.z())*margin+halfZ;
+        return Math.max(from.x(),to.x())>=center.x()-x && Math.min(from.x(),to.x())<=center.x()+x
+            && Math.max(from.y(),to.y())>=center.y()-y && Math.min(from.y(),to.y())<=center.y()+y
+            && Math.max(from.z(),to.z())>=center.z()-z && Math.min(from.z(),to.z())<=center.z()+z;
+    }
 }

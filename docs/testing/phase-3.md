@@ -1,5 +1,10 @@
 # Phase 3 v1: working portals
 
+**Historical baseline:** gameplay/visual validation below is for 0.3/0.4.
+Version 0.5 adds the [fidelity work packages](fidelity-0.5.md), with builds/unit
+checks only and no new in-game validation. Use that report's current controls,
+performance defaults, assets and manual checklist.
+
 Minecraft 26.3, Loader 0.19.5, Fabric API 0.161.0+26.3, Java 25.
 This is an integrated-server gameplay baseline with a bounded destination
 renderer. It is not a claim that full visual polish, latency testing or rendering

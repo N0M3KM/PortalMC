@@ -36,30 +36,51 @@ import net.minecraft.world.phys.Vec3;
 public final class PortalServer {
     public static final TagKey<Block> PORTALABLE = TagKey.create(Registries.BLOCK, Identifier.fromNamespaceAndPath("portalmod", "portalable"));
     private static final List<PortalFrame> PORTALS = new ArrayList<>();
+    private static final List<PortalFrame> READ_ONLY_PORTALS = Collections.unmodifiableList(PORTALS);
     private static final Map<UUID, Long> SHOTS = new HashMap<>();
+    private static final Map<UUID,Long> CROSSINGS = new HashMap<>();
     private static final Map<Entity, Vec3> BEFORE = new IdentityHashMap<>();
     private record Ticket(ServerLevel level, ChunkPos pos) { }
     private static final Set<Ticket> TICKETS = new HashSet<>();
     private static TicketType ticketType;
     private static long nextId;
     private PortalServer() { }
-    public static List<PortalFrame> frames() { return List.copyOf(PORTALS); }
+    public static List<PortalFrame> frames() { return READ_ONLY_PORTALS; }
+    public static void captureProjectile(Entity entity) { if(!entity.level().isClientSide()) BEFORE.putIfAbsent(entity,entity.getBoundingBox().getCenter()); }
     public static void transported(Entity entity) { BEFORE.remove(entity); }
+    public static void recordCrossings(ServerPlayer player,int count,float speed,boolean nativeMove) {
+        if(count<=0) return;
+        long total=CROSSINGS.merge(player.getUUID(),(long)count,Long::sum);
+        if(ServerPlayNetworking.canSend(player,PortalPayloads.TraversalFeedback.TYPE)) ServerPlayNetworking.send(player,new PortalPayloads.TraversalFeedback(total,speed,nativeMove));
+    }
     public static void initialize() {
         PortalConfig.load();
         ticketType = Registry.register(BuiltInRegistries.TICKET_TYPE, Identifier.fromNamespaceAndPath("portalmod", "portal"), new TicketType(0, 14));
         PortalPayloads.register();
-        ServerPlayNetworking.registerGlobalReceiver(PortalPayloads.Shot.TYPE, (shot, context) -> fire(context.player(), shot));
+        ServerPlayNetworking.registerGlobalReceiver(PortalPayloads.Shot.TYPE, (shot, context) -> {
+            ServerPlayer shooter = context.player();
+            long before = SHOTS.getOrDefault(shooter.getUUID(), Long.MIN_VALUE);
+            boolean accepted = fire(shooter, shot);
+            // Broadcast only a consumed shot, never a cooldown/item/invalid-input rejection.
+            if (SHOTS.getOrDefault(shooter.getUUID(), Long.MIN_VALUE) != before) {
+                var feedback = new PortalPayloads.ShotFeedback(shooter.getUUID(), shooter.level().getGameTime(), shot.orange(), accepted);
+                for (ServerPlayer viewer : shooter.level().getServer().getPlayerList().getPlayers())
+                    if (ServerPlayNetworking.canSend(viewer, PortalPayloads.ShotFeedback.TYPE)) ServerPlayNetworking.send(viewer, feedback);
+            }
+        });
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> sync(handler.player));
         ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
             if (PORTALS.removeIf(p -> p.owner().equals(handler.player.getUUID()))) changed(server);
             SHOTS.remove(handler.player.getUUID());
+            CROSSINGS.remove(handler.player.getUUID());
         });
-        ServerLifecycleEvents.SERVER_STOPPED.register(server -> { PORTALS.clear(); TICKETS.clear(); SHOTS.clear(); BEFORE.clear(); });
+        ServerLifecycleEvents.SERVER_STOPPED.register(server -> { PORTALS.clear(); TICKETS.clear(); SHOTS.clear(); CROSSINGS.clear(); BEFORE.clear(); });
         ServerTickEvents.START_LEVEL_TICK.register(level -> {
-            for (PortalFrame p : PORTALS) if (p.dimension().equals(level.dimension().identifier().toString())) {
+            for (PortalFrame p : PORTALS) if (p.dimension().equals(level.dimension().identifier().toString()) && PortalWorld.partner(level,p)!=null) {
                 Vec3 center = MinecraftCollisionWorld.toMinecraft(p.center());
-                for (Entity e : level.getEntities((Entity) null, new AABB(center, center).inflate(PortalConfig.get().entityCaptureRadius))) BEFORE.putIfAbsent(e, e.getBoundingBox().getCenter());
+                // Section-indexed nearby query, never a world-wide entity scan. Native moves handle mobs/items.
+                for (Entity e : level.getEntities((Entity) null, new AABB(center, center).inflate(PortalConfig.get().entityCaptureRadius)))
+                    if(e instanceof net.minecraft.world.entity.projectile.Projectile || e instanceof ServerPlayer player && !dev.portalmod.server.ServerMovement.active(player)) BEFORE.putIfAbsent(e, e.getBoundingBox().getCenter());
             }
         });
         ServerTickEvents.END_LEVEL_TICK.register(level -> {

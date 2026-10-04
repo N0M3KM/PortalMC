@@ -121,6 +121,7 @@ public final class ServerMovement {
         MinecraftCollisionWorld collision = new MinecraftCollisionWorld(p);
         MotionState after = SourceMovement.tick(before, input, ConfigManager.server(), collision, p.isUsingItem());
         s.portalCrossings += collision.crossingCount();
+        dev.portalmod.portal.PortalServer.recordCrossings(p,collision.crossingCount(),(float)Math.sqrt(after.velocity().lengthSquared()),false);
         Vec3 from = p.position();
         MinecraftCollisionWorld.apply(p, after);
         Vec3 delta = p.position().subtract(from);

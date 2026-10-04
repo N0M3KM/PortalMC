@@ -34,6 +34,8 @@ public abstract class PortalProjectileClipMixin {
             if (!portal.dimension().equals(level.dimension().identifier().toString()) || PortalWorld.partner(level, portal) == null) continue;
             double t = portal.crossing(start, end);
             if (t < 0 || !portal.contains(start.add(end.subtract(start).scale(t)), PortalWorld.extent(entity.getBoundingBox(), portal.right()), PortalWorld.extent(entity.getBoundingBox(), portal.up()))) continue;
+            // Capture an actual crossing ray even when its projectile started outside the small endpoint query.
+            dev.portalmod.portal.PortalServer.captureProjectile(entity);
             // Only the segment in front of the entry belongs to this world. The remaining ray is tested at the exit.
             if (portal.distance(MinecraftCollisionWorld.fromMinecraft(Vec3.atCenterOf(pos))) < 0
                     || portal.support().stream().anyMatch(c -> c.x() == pos.getX() && c.y() == pos.getY() && c.z() == pos.getZ())) cir.setReturnValue(Shapes.empty());

@@ -10,7 +10,7 @@ public final class PortalConfig {
     public double shotRange = 64;
     public int shotCooldownTicks = 4;
     public int maxPairs = 64;
-    public int chunkRadius = 2;
+    public int chunkRadius = 1;
     public int chunkRefreshTicks = 40;
     public double exitEpsilon = 0.025;
     public double collisionMargin = 0.1;
@@ -21,7 +21,7 @@ public final class PortalConfig {
     public double fizzleMissDistance = 3;
     public int maxRemoteChunks = 128;
     public double remoteViewDistance = 128;
-    public double entityCaptureRadius = 12;
+    public double entityCaptureRadius = 2;
     public int entityRefreshTicks = 10;
     private static PortalConfig current = new PortalConfig();
     public static PortalConfig get() { return current; }

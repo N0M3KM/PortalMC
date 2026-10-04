@@ -10,6 +10,9 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 public final class PortalModClient implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
+        dev.portalmod.client.visual.PortalVisualConfig.load();
+        dev.portalmod.client.visual.CharacterAnimation.initialize();
+        dev.portalmod.client.visual.PhysicsHud.initialize();
         new ClientMovement().initialize();
         ClientLifecycleEvents.CLIENT_STARTED.register(LocalPortalAssets::load);
         dev.portalmod.client.portal.ClientPortals.initialize();

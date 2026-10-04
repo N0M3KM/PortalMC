@@ -4,7 +4,7 @@ A Fabric mod that brings Portal-style mechanics into Minecraft Java
 Edition. Minecraft hosts the entire game. Portal 2 and the Source engine are not
 launched, embedded or required.
 
-## Current scope: movement, local models and v1 portals (0.4.0)
+## Current scope: movement, models, portals and fidelity layers (0.5.0)
 
 - Minecraft Java **26.3**, Java **25**.
 - Fabric Loader **0.19.5**, Fabric API **0.161.0+26.3**.
@@ -24,6 +24,18 @@ launched, embedded or required.
   floor and ceiling portals support players, fitting mobs, items and projectiles.
 - Destination views, bounded recursion, transformed momentum, server chunk
   tickets, remote client chunks and native remote entity tracking.
+
+Version 0.5.0 adds joint-aware gripping poses, smooth movement/body animation,
+original hands and fallback meshes, gun mechanisms/color feedback, animated oval
+surfaces and capped original particles, reduce-motion camera effects, an F8
+physics HUD and conservative/adaptive portal-render budgets. This revision was
+built and unit-tested without launching Minecraft; visual checks are pending.
+
+Use **F8** or `/portalpos` for measurements. `/portalpos reset` resets telemetry;
+`/portalpos debug` toggles render timing. For existing client settings, run
+`/portalpos performance` to apply and save the conservative view profile. New
+client effects live in `config/portalmod-visuals.json`; each has a toggle.
+See [the seven-package report and manual checklist](docs/testing/fidelity-0.5.md).
 
 Portal rendering is a bounded v1 implementation. Full visual polish and
 dedicated multiplayer/rendering-mod validation remain before the stretch phase.
@@ -54,7 +66,7 @@ The launcher uses the local Gradle cache and the installed `D:\Java` JDK when
 available. It starts Minecraft with the current source changes every time.
 
 On Linux/macOS use `bash ./gradlew build` and `bash ./gradlew runClient`.
-The mod JAR is `build/libs/portalmc-0.4.0.jar`; the `-sources.jar` is for developers.
+The mod JAR is `build/libs/portalmc-0.5.0.jar`; the `-sources.jar` is for developers.
 Install the mod and the matching Fabric API on **both client and server**.
 Do not put the sources JAR in `mods`.
 
@@ -113,10 +125,11 @@ slow falling. Fall-protection toggles also apply in vanilla mode.
 
 Additional generated configs are `config/portalmod-client.json` (local asset
 directory and character/gun visuals), `config/portalmod-portals.json` (server
-portal rules) and `config/portalmod-portals-client.json` (view budgets/recursion).
+portal rules) and `config/portalmod-portals-client.json` (appearance, particles and view budgets),
+and `config/portalmod-visuals.json` (poses, gun/camera effects and HUD).
 Restart after changing those files. `/portalmod reload` reloads movement only.
 The model path defaults to `D:\SteamLibrary\steamapps\common\Portal 2`.
-Missing local assets use original sprites and the Minecraft character; movement
+Missing local assets use the original procedural gun and character models; movement
 and portals still work. Both sides of multiplayer must use matching mod builds.
 
 Run `gradlew.bat test` for movement/queue unit tests and

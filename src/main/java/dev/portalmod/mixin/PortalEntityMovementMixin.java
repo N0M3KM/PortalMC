@@ -23,6 +23,7 @@ abstract class PortalEntityMovementMixin {
     private void portalmod$split(MoverType mover, Vec3 displacement, CallbackInfo ci) {
         Entity entity = (Entity)(Object)this;
         if (portalmod$moving || entity.level().isClientSide() || entity instanceof Player) return;
+        if(!dev.portalmod.portal.PortalWorld.config(entity.level()).enabled || dev.portalmod.portal.PortalServer.frames().isEmpty()) return;
         Vector position = MinecraftCollisionWorld.fromMinecraft(entity.position()), delta = MinecraftCollisionWorld.fromMinecraft(displacement);
         Vector velocity = MinecraftCollisionWorld.fromMinecraft(entity.getDeltaMovement()).scale(20);
         var crossing = PortalTraversal.cross(entity, position, new MotionState(position.add(delta), velocity, entity.onGround(), false, false));

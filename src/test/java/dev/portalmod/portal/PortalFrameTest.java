@@ -31,4 +31,12 @@ class PortalFrameTest {
         assertFalse(p.contains(new Vector(.25,0,0), .3, .9));
         assertFalse(p.contains(new Vector(0,.2,0), .3, .9));
     }
+    @Test void broadPhaseKeepsFastCrossingsAndRejectsDistantSweeps() {
+        for(Vector axis:AXES) {
+            PortalFrame p=frame(axis,Vector.ZERO);
+            assertTrue(p.intersectsSweep(axis.scale(100),axis.scale(-100),.3,.9,.3,.1));
+            Vector distant=p.right().scale(100);
+            assertFalse(p.intersectsSweep(distant.add(axis),distant.subtract(axis),.3,.9,.3,.1));
+        }
+    }
 }

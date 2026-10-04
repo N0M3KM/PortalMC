@@ -111,3 +111,13 @@ Cross-dimension portals are outside v1 scope.
   with collision geometry, not cooldown-only teleportation.
 
 Phase 4 starts only after Phase 3 stability checks pass.
+
+## Fidelity layers (0.5)
+
+Client-only procedural pose, gun, particle, camera and HUD layers extend the
+existing renderer. Cosmetic shot results and traversal totals come from small
+server payloads; they do not grant placement or change movement authority.
+Portal scene refresh is incremental and globally budgeted, with frustum culling,
+pooled targets and cached model vertices/poses. See `testing/fidelity-0.5.md`
+for the seven packages, budgets, complete tuning provenance and manual checks.
+The 1x2 collision contract remains unchanged beneath the visual oval.

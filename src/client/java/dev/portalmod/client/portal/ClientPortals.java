@@ -23,16 +23,29 @@ public final class ClientPortals {
     public static List<PortalFrame> frames() { return portals; }
     public static PortalConfig config() { return config; }
     public static void initialize() {
-        PortalRenderer.initialize();
+        PortalRenderer.initialize(); PortalEffects.initialize();
+        ClientPlayNetworking.registerGlobalReceiver(PortalPayloads.TraversalFeedback.TYPE,(feedback,context) -> {
+            dev.portalmod.client.visual.PhysicsHud.traversal(feedback.count());
+            if(feedback.nativeMove()) dev.portalmod.client.visual.CameraEffects.exited(feedback.speed());
+        });
+        ClientPlayNetworking.registerGlobalReceiver(PortalPayloads.ShotFeedback.TYPE, (feedback, context) -> {
+            dev.portalmod.client.visual.CharacterAnimation.fired(feedback.owner(),feedback.tick());
+            dev.portalmod.client.visual.GunAnimation.remoteResult(feedback.owner(),feedback.orange(),feedback.accepted());
+            if(context.player().getUUID().equals(feedback.owner())) {
+                dev.portalmod.client.visual.GunAnimation.result(feedback.orange(),feedback.accepted());
+                if(!feedback.accepted()) PortalEffects.fizzle(feedback.orange());
+            }
+        });
         PortalWorld.installClient(() -> portals, () -> config);
         ClientPlayNetworking.registerGlobalReceiver(PortalPayloads.Snapshot.TYPE, (snapshot, context) -> {
             PortalPayloads.Data data = ConfigManager.JSON.fromJson(snapshot.json(), PortalPayloads.Data.class);
             data.config().validate();
             if (data.portals().size() > 256) throw new IllegalArgumentException("Too many portals");
+            PortalEffects.changed(portals,data.portals());
             config = data.config(); portals = List.copyOf(data.portals());
             if (context.client().level != null) ((PortalChunkCacheBridge)context.client().level.getChunkSource()).portalmod$retain();
         });
-        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> { portals = List.of(); lastShot = Integer.MIN_VALUE / 2; PortalRenderer.close(); });
+        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> { portals = List.of(); lastShot = Integer.MIN_VALUE / 2; PortalRenderer.close(); dev.portalmod.client.visual.GunAnimation.clear(); PortalEffects.clear(); dev.portalmod.client.visual.CameraEffects.clear(); LocalPortalAssets.clearPoseCache(); });
         ClientPreAttackCallback.EVENT.register((client, player, clicks) -> {
             if (player.getMainHandItem().is(PortalItems.PORTAL_GUN) || player.getOffhandItem().is(PortalItems.PORTAL_GUN)) {
                 if (clicks > 0) fire(false);
@@ -49,7 +62,7 @@ public final class ClientPortals {
         var player = Minecraft.getInstance().player;
         if (player == null || !ClientPlayNetworking.canSend(PortalPayloads.Shot.TYPE) || player.tickCount - lastShot < config.shotCooldownTicks) return;
         lastShot = player.tickCount;
-        LocalPortalAssets.fired();
+        dev.portalmod.client.visual.GunAnimation.fired(orange);
         ClientPlayNetworking.send(new PortalPayloads.Shot(orange, player.getYRot(), player.getXRot()));
     }
     public static boolean remoteAllowed(int chunkX, int chunkZ) {
